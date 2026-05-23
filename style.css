@@ -481,3 +481,56 @@ align-items:flex-start;
 }
 
 }
+/* ================= AUTH ================= */
+
+.auth-page{
+
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+
+padding:20px;
+
+}
+
+.auth-card{
+
+width:100%;
+max-width:450px;
+
+display:flex;
+flex-direction:column;
+gap:15px;
+
+}
+
+.auth-card form{
+
+display:flex;
+flex-direction:column;
+gap:15px;
+
+}
+
+.auth-card input{
+
+padding:12px;
+
+border-radius:10px;
+
+border:1px solid #223a7a;
+
+background:#0f1635;
+
+color:white;
+
+outline:none;
+
+}
+
+.muted{
+
+color:#9fb1ff;
+
+}
