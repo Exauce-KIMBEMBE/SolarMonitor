@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inscription - SolarMonitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<main class="auth-page">
+  <section class="card auth-card">
+    <h1>Créer un compte</h1>
+    <p class="muted">Votre compte devra être validé par le manager.</p>
+
+    <form id="registerForm">
+      <input id="firstname" type="text" placeholder="Prénom" required>
+      <input id="lastname" type="text" placeholder="Nom" required>
+      <input id="email" type="email" placeholder="Email" required>
+      <input id="password" type="password" placeholder="Mot de passe" required>
+
+      <button class="pill on-btn" type="submit">S'inscrire</button>
+    </form>
+
+    <p id="message"></p>
+    <a href="login.html">Déjà un compte ? Connexion</a>
+  </section>
+</main>
+
+<script>
+const API_URL = "https://solarmonitor.onrender.com";
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const data = {
+    firstname: firstname.value,
+    lastname: lastname.value,
+    email: email.value,
+    password: password.value
+  };
+
+  const res = await fetch(`${API_URL}/api/register`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(data)
+  });
+
+  const result = await res.json();
+  message.textContent = result.message || result.error;
+
+  if (res.ok) {
+    message.style.color = "#1cc88a";
+    registerForm.reset();
+  } else {
+    message.style.color = "#e74c3c";
+  }
+});
+</script>
+
+</body>
+</html>
