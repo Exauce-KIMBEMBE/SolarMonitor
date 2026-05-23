@@ -1,0 +1,483 @@
+/* ================== Variables ================== */
+:root{
+  --bg:    #0a1228;
+  --card:  #111d3f;
+  --ink:   #e5edff;
+  --muted: #9fb1ff;
+  --hi:    #cbd5ff;
+
+  --grid:  rgba(140,170,255,.25);
+  --ok:    #1cc88a;
+  --bad:   #e74c3c;
+  --info:  #3a5cc9;
+
+  /* hauteur header calculée par JS */
+  --headerH: 0px;
+}
+
+/* ================ Base / Reset ================ */
+*{ box-sizing: border-box; }
+html, body { height: 100%; }
+body{
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 15px/1.4 system-ui, Segoe UI, Roboto, Arial;
+}
+
+/* ================= Header sticky ================= */
+header{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 12px 16px;
+  background: rgba(14,26,58,.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #152a5e;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+
+header .headerTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+header .headerCmd{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+header .headerRep{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+h1{ margin: 0; font-size: 1.35rem; }
+
+/* ============== Barre de statut sticky ============= */
+.statusbar{
+  position: sticky;
+  top: var(--headerH);
+  z-index: 999;
+
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  padding: 8px 16px;
+  background: rgba(14,26,58,.92);
+  backdrop-filter: blur(8px);
+  color: #bcd0ff;
+  border-bottom: 1px solid #152a5e;
+}
+.statusbar b{ color: #fff; }
+
+/* =================== Layout main =================== */
+main{
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.card{
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  width: 100%;
+  border: 1px solid rgba(38,74,138,.35);
+}
+
+h2{
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  color: var(--hi);
+}
+
+h3{
+  margin: 8px 0 8px;
+  color: var(--hi);
+}
+
+/* =================== Text helpers =================== */
+.legend{
+  font-size: .9rem;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.row{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ================= Badges & Boutons ================= */
+.badge{
+  background: #182a5a;
+  color: #cdd7ff;
+  padding: 6px 12px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .9rem;
+  border: 1px solid rgba(38,74,138,.45);
+}
+
+.badge input[type="checkbox"]{
+  accent-color: var(--info);
+}
+
+.badge input[type="number"]{
+  background: #0f1635;
+  color: var(--ink);
+  border: 1px solid #223a7a;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: .9rem;
+  outline: none;
+}
+
+.pill{
+  padding: 7px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.06);
+  cursor: pointer;
+  font-weight: 700;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.pill:disabled{ opacity:.6; cursor:not-allowed; }
+
+.on-btn { background: var(--ok);  }
+.off-btn{ background: var(--bad); }
+.info   { background: var(--info); }
+
+.pill:hover{ filter: brightness(1.06); }
+.pill:active{ transform: translateY(1px); }
+
+/* Effet ripple sur les boutons */
+.pill .ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ripple-anim 600ms linear;
+  background-color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+@keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+/* =================== Inputs (header) =================== */
+#periodMs{
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid #223a7a;
+  background: #0f1635;
+  color: #e5edff;
+  width: 160px;
+  outline: none;
+}
+
+/* =================== Graphiques ==================== */
+.chartBox{
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* tailles */
+.tsBox { height: 240px; }
+.uiBox { height: 240px; }
+.stepBox { height: 260px; }
+
+.chartBox canvas{
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  background: #122347;
+  box-shadow: inset 0 0 0 1px #264a8a;
+  border-radius: 12px;
+}
+
+/* ===================== Historique ====================== */
+#historyList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.histItem{
+  user-select: none;
+}
+
+.histItem.selected{
+  outline: 2px solid rgba(59,130,246,.85);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+}
+
+/* ===================== Servos ====================== */
+.gauges{ gap: 20px; margin-top: 8px; }
+.servo { text-align: center; }
+
+.gauge{
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: auto;
+}
+
+.gTrack{
+  fill: none;
+  stroke: #264a8a;
+  stroke-width: 10;
+  stroke-linecap: round;
+  opacity: .9;
+}
+
+.gFill{
+  --angle: 0;
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 180;
+  stroke-dashoffset: calc(180 - var(--angle));
+  transition: stroke-dashoffset .25s ease;
+}
+
+.needle{
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  width: 3px;
+  height: 48px;
+  background: #fffb;
+  transform-origin: bottom center;
+  transform: rotate(0deg);
+  z-index: 2;
+}
+
+.gauge t{
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 10px);
+  font-weight: 700;
+  color: #bcd0ff;
+  z-index: 2;
+}
+
+/* sliders servos */
+#servo1Range, #servo2Range{
+  -webkit-appearance:none; appearance:none;
+  width: 140px;
+  height:6px;
+  border-radius:6px;
+  outline:none;
+  background:#264a8a;
+  box-shadow:inset 0 0 0 1px #3562b8;
+}
+
+#servo1Range::-webkit-slider-thumb, #servo2Range::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:18px; height:18px; border-radius:50%;
+  background:#6ea8fe; border:2px solid #2b58a5;
+  cursor:pointer;
+}
+
+#servo1Range::-moz-range-thumb, #servo2Range::-moz-range-thumb{
+  width:18px; height:18px; border-radius:50%;
+  background:#6ea8fe; border:2px solid #2b58a5;
+  cursor:pointer;
+}
+
+.servo .needle { transition: all .15s ease; }
+.servo.active .gTrack{ stroke:#22c55e66; }
+.servo.active .gFill{  transition: stroke-dashoffset .12s ease; }
+.servo.active .needle{ background:#a7f3d0; }
+
+input[type=range].moving{
+  box-shadow:0 0 0 2px #22c55e55 inset;
+}
+input[type=range].moving::-webkit-slider-thumb{
+  background:#22c55e; border-color:#15803d;
+}
+input[type=range].moving::-moz-range-thumb{
+  background:#22c55e; border-color:#15803d;
+}
+
+/* ===================== Footer ====================== */
+footer{
+  padding: 10px 16px;
+  background: #0e1734;
+  border-top: 1px solid #152a5e;
+  color: #cfe0ff;
+}
+
+/* ================== Responsive ===================== */
+@media (max-width: 1100px){
+  main{ grid-template-columns: 1fr; }
+  .tsBox, .uiBox, .stepBox{ height: 260px; }
+}
+
+/* ===== Carte pleine largeur dans la grille ===== */
+.full-width{
+  grid-column: 1 / -1;   /* prend toutes les colonnes */
+  width: 100%;
+}
+
+/* ✅ Détails du scan : côte à côte sans étirer */
+#scanDetailsCard .row{
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between; /* répartit sur toute la ligne */
+  align-items: center;
+}
+
+/* les pills gardent leur taille (pas d'étirement) */
+#scanDetailsCard .row .pill,
+#scanDetailsCard .row button.pill{
+  flex: 0 0 auto;     /* pas de grow */
+}
+
+.is-hidden { display: none !important; }
+
+/* ===================== ESP32 ====================== */
+
+#esp32ConnectionCard{
+  border:1px solid rgba(28,200,138,.25);
+}
+
+/* Etat connecté */
+.connected{
+
+  background:rgba(28,200,138,.18)!important;
+  border:1px solid var(--ok)!important;
+  color:#b9ffd9!important;
+
+}
+
+/* Etat déconnecté */
+.disconnected{
+
+  background:rgba(231,76,60,.18)!important;
+  border:1px solid var(--bad)!important;
+  color:#ffd0d0!important;
+
+}
+
+/* Message déconnexion */
+#esp32Warning{
+
+  transition:all .3s ease;
+
+}
+
+/* Désactivation commandes */
+
+.esp32-control:disabled{
+
+  opacity:.45;
+  cursor:not-allowed;
+  filter:grayscale(80%);
+  pointer-events:none;
+
+}
+
+/* effet visuel boutons désactivés */
+
+.esp32-control:disabled:hover{
+
+  transform:none;
+  filter:grayscale(80%);
+
+}
+
+/* bouton connexion manuelle */
+
+#btnManualConnect{
+
+  background:#f59e0b;
+  border:1px solid #d97706;
+
+}
+
+#btnManualConnect:hover{
+
+  filter:brightness(1.08);
+
+}
+
+/* badges capteurs haut */
+
+#liveTemp,
+#liveLux,
+#liveHumidity,
+#liveTc{
+
+  color:#ffffff;
+  font-weight:bold;
+
+}
+
+/* animation état connexion */
+
+@keyframes pulseConnected{
+
+0%{
+box-shadow:0 0 0 rgba(28,200,138,0);
+}
+
+50%{
+box-shadow:0 0 15px rgba(28,200,138,.5);
+}
+
+100%{
+box-shadow:0 0 0 rgba(28,200,138,0);
+}
+
+}
+
+.connected{
+
+animation:pulseConnected 2s infinite;
+
+}
+
+/* Responsive */
+
+@media(max-width:768px){
+
+#esp32ConnectionCard .row{
+
+flex-direction:column;
+align-items:flex-start;
+
+}
+
+}
