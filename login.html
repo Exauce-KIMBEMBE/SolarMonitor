@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion - SolarMonitor</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<main class="auth-page">
+
+<section class="card auth-card">
+
+<h1>Connexion</h1>
+
+<p class="muted">
+Connectez-vous pour accéder au tableau de bord
+</p>
+
+<form id="loginForm">
+
+<input
+id="email"
+type="email"
+placeholder="Email"
+required>
+
+<input
+id="password"
+type="password"
+placeholder="Mot de passe"
+required>
+
+<button
+class="pill on-btn"
+type="submit">
+
+Se connecter
+
+</button>
+
+</form>
+
+<p id="message"></p>
+
+<p>
+
+Pas encore de compte ?
+
+<a href="register.html">
+
+Créer un compte
+
+</a>
+
+</p>
+
+</section>
+
+</main>
+
+
+<script>
+
+const API_URL="https://solarmonitor.onrender.com";
+
+
+document
+.getElementById("loginForm")
+.addEventListener(
+"submit",
+async(e)=>{
+
+e.preventDefault();
+
+const data={
+
+email:
+email.value,
+
+password:
+password.value
+
+};
+
+
+try{
+
+const res=
+await fetch(
+`${API_URL}/api/login`,
+{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify(data)
+
+}
+
+);
+
+const result=
+await res.json();
+
+
+if(res.ok){
+
+localStorage.setItem(
+"token",
+result.token
+);
+
+localStorage.setItem(
+"user",
+JSON.stringify(
+result.user
+)
+);
+
+message.style.color="#1cc88a";
+
+message.textContent=
+"Connexion réussie";
+
+setTimeout(()=>{
+
+if(
+result.user.role==="admin"
+){
+
+window.location.href=
+"manager.html";
+
+}
+else{
+
+window.location.href=
+"index.html";
+
+}
+
+},1000);
+
+}
+else{
+
+message.style.color="#e74c3c";
+
+message.textContent=
+result.error;
+
+}
+
+}
+catch{
+
+message.style.color="#e74c3c";
+
+message.textContent=
+"Erreur serveur";
+
+}
+
+}
+
+);
+
+</script>
+
+</body>
+</html>
