@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Système solaire</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="chart.js"></script>
+  <script src="app.js" defer></script>
+</head>
+
+<body>
+
+<header id="appHeader">
+  <div class="headerTop">
+    <h1>Dashboard Système solaire</h1>
+    <div class="row">
+      <span class="badge" id="conn">ESP32 : Déconnectée</span>
+      <span class="badge" id="state">Mesure inactive</span>
+      <span class="badge">Mode orientation: <b id="orientModeTxt">manual</b></span>
+      <span class="badge">Tracker: <b id="trackerTxt">OFF</b></span>
+      <span class="badge">Temp: <b id="liveTemp">—</b></span>
+      <span class="badge">Lux: <b id="liveLux">—</b></span>
+      <span class="badge">Hum: <b id="liveHumidity">—</b></span>
+      <span class="badge">TC: <b id="liveTc">—</b></span>
+    </div>
+  </div>
+
+  <div class="row headerCmd">
+    <button class="pill on-btn esp32-control" id="btnStart">▶ Start</button>
+    <button class="pill off-btn esp32-control" id="btnStop">■ Stop</button>
+    <button class="pill on-btn esp32-control" id="btnScanFull">⏱ Lancer 2^8</button>
+
+    <input class="esp32-control" id="periodMs" type="number" min="0" step="100" placeholder="Intervalle (ms)">
+    <button class="pill info esp32-control" id="btnSetPeriod">↻ Appliquer</button>
+  </div>
+
+  <div class="card headerWide" id="esp32ConnectionCard">
+    <h3>Connexion ESP32</h3>
+
+    <div class="row">
+      <span class="pill info">État : <b id="esp32Status">Déconnectée</b></span>
+      <span class="pill info">Dernier signal : <b id="esp32LastSeen">—</b></span>
+      <span class="pill info">IP : <b id="esp32Ip">—</b></span>
+
+      <button class="pill on-btn" id="btnManualConnect">
+        🔌 Connexion manuelle
+      </button>
+    </div>
+
+    <div
+      id="esp32Warning"
+      style="
+        margin-top:12px;
+        padding:10px;
+        border-radius:8px;
+        background:#3b1010;
+        color:#ff9090;
+        font-weight:bold;
+      ">
+      Carte ESP32 déconnectée : les commandes sont désactivées.
+    </div>
+  </div>
+
+  <div class="card headerWide" id="orientationCard">
+    <h3>Orientation solaire</h3>
+
+    <div class="row">
+      <span class="pill info" style="pointer-events:none">Mode avant mesure</span>
+
+      <label class="badge">
+        <input class="esp32-control" type="radio" name="orientMode" id="orientManual" value="manual" checked>
+        Manuel
+      </label>
+
+      <label class="badge">
+        <input class="esp32-control" type="radio" name="orientMode" id="orientAutoLight" value="auto_light">
+        Auto luminosité
+      </label>
+
+      <label class="badge">
+        <input class="esp32-control" type="radio" name="orientMode" id="orientPreset" value="preset">
+        Angles préenregistrés
+      </label>
+
+      <button class="pill info esp32-control" id="btnApplyOrient">Appliquer mode</button>
+      <button class="pill info esp32-control" id="btnStatus">Lire statut</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill info" style="pointer-events:none">Suiveur solaire hors mesure</span>
+      <button class="pill on-btn esp32-control" id="btnTrackerOn">☀ Tracker ON</button>
+      <button class="pill off-btn esp32-control" id="btnTrackerOff">Tracker OFF</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill info">LDR gauche: <b id="ldrL">—</b></span>
+      <span class="pill info">LDR droite: <b id="ldrR">—</b></span>
+      <span class="pill info">LDR haut: <b id="ldrH">—</b></span>
+      <span class="pill info">LDR bas: <b id="ldrB">—</b></span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill info">RX / Azimut: <b id="servo1Live">—°</b></span>
+      <span class="pill info">RY / Élévation: <b id="servo2Live">—°</b></span>
+      <span class="pill info">Pendant mesure: <b>panneau bloqué</b></span>
+    </div>
+  </div>
+
+  <div class="card headerWide" id="scanDetailsCard">
+    <h3>Détails du scan</h3>
+
+    <div class="row">
+      <span class="pill info">Scan: <b id="histSelId">—</b></span>
+      <span class="pill info">Date: <b id="histSelTs">—</b></span>
+      <span class="pill info">Points: <b id="histSelPts">—</b></span>
+      <span class="pill info">Durée: <b id="histSelDur">—</b></span>
+    </div>
+
+    <div class="row">
+      <span class="pill info">Lux (min/avg/max): <b id="histLux">—</b></span>
+      <span class="pill info">Temp (min/avg/max): <b id="histTemp">—</b></span>
+      <span class="pill info">Hum (min/avg/max): <b id="histHum">—</b></span>
+      <span class="pill info">TC (min/avg/max): <b id="histTc">—</b></span>
+    </div>
+  </div>
+
+  <div class="row headerRep">
+    <span class="pill info" style="pointer-events:none">Repères</span>
+
+    <label class="badge"><input id="chkI0" type="checkbox"> Axe I = 0</label>
+    <label class="badge"><input id="chkU0" type="checkbox"> Axe U = 0</label>
+    <label class="badge"><input id="chkIsc" type="checkbox"> Isc</label>
+    <label class="badge"><input id="chkVoc" type="checkbox"> Voc</label>
+
+    <label class="badge">
+      <input id="chkUref" type="checkbox">
+      Uref =
+      <input id="uRefVal" type="number" step="0.001" style="width:90px"> V
+    </label>
+
+    <label class="badge">
+      <input id="chkIref" type="checkbox">
+      Iref =
+      <input id="iRefVal" type="number" step="0.000001" style="width:110px"> A
+    </label>
+  </div>
+</header>
+
+<div class="statusbar" id="statusbar">
+  <span>Seq <b id="seq">—</b></span>
+  <span>Horloge (ms) <b id="ts">—</b></span>
+  <span>Phase <b id="phase">—</b></span>
+  <span>Pattern <b id="line">—</b></span>
+  <span>Orientation <b id="orientModeBar">—</b></span>
+</div>
+
+<main>
+  <section class="card">
+    <h2>Mesures temps réel</h2>
+
+    <div class="legend">
+      <span>Lux</span><span>Temp DHT (°C)</span><span>Humidité (%)</span><span>TC (°C)</span>
+    </div>
+
+    <div class="chartBox tsBox">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <label class="badge">
+        Fenêtre (pts)
+        <input id="winSize" type="number" min="20" max="2000" step="10" value="150" style="width:90px">
+      </label>
+
+      <label class="badge">
+        Défilement
+        <input id="chartScroll" type="range" min="0" max="0" value="0" style="width:260px">
+      </label>
+
+      <label class="badge">
+        <input id="autoFollow" type="checkbox" checked> Suivre en direct
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Courbe I(U)</h2>
+
+    <div class="chartBox uiBox">
+      <canvas id="uiChart"></canvas>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill info">U (V): <b id="uEff">—</b></span>
+      <span class="pill info">I (A): <b id="iEff">—</b></span>
+      <span class="pill info">Points: <b id="uiCount">0</b></span>
+      <span class="pill info">k: <b id="stepCount">0</b></span>
+
+      <span class="pill info">Vmpp: <b id="vmpp">—</b></span>
+      <span class="pill info">Impp: <b id="impp">—</b></span>
+      <span class="pill info">Pmpp: <b id="pmpp">—</b></span>
+      <span class="pill info">Isc: <b id="iscVal">—</b></span>
+      <span class="pill info">Voc: <b id="vocVal">—</b></span>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="pill info" id="btnToggleHistory">Afficher historique</button>
+      <button class="pill info" id="btnDownloadAllMeasures">⬇ Export TOUTES les mesures (CSV)</button>
+      <button class="pill off-btn" id="btnClearHistory">🗑 Vider historique</button>
+      <button class="pill off-btn" id="btnClearDisplay">🧹 Réinitialiser l’affichage</button>
+    </div>
+
+    <div class="card" id="historyCard" style="margin-top:12px">
+      <h3>Scans enregistrés</h3>
+      <div id="historyList" style="display:flex; flex-direction:column; gap:8px"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Puissance & Tension</h2>
+
+    <div class="row" style="gap:16px">
+      <div class="chartBox uiBox" style="flex:1; min-width:280px">
+        <h3>P(U)</h3>
+        <canvas id="pChart"></canvas>
+      </div>
+
+      <div class="chartBox stepBox" style="flex:1; min-width:280px">
+        <h3>U (par mesure)</h3>
+        <canvas id="uChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Courant & Servos</h2>
+
+    <div class="row" style="gap:16px">
+      <div class="chartBox stepBox" style="flex:1; min-width:320px">
+        <h3>I (par mesure)</h3>
+        <canvas id="iChart"></canvas>
+      </div>
+
+      <div class="card" style="flex:1; min-width:320px">
+        <h3>Servos</h3>
+
+        <div class="row gauges">
+          <div class="servo">
+            <div class="gauge">
+              <svg viewBox="0 0 100 60">
+                <path class="gTrack" d="M10,50 A40,40 0 0 1 90,50"/>
+                <path class="gFill"  d="M10,50 A40,40 0 0 1 90,50"/>
+              </svg>
+              <div class="needle" id="needle1"></div>
+              <t id="servoTxt1">0°</t>
+            </div>
+            <div class="label">Servo 1 — RX / Azimut</div>
+            <input class="esp32-control" id="servo1Range" type="range" min="0" max="180" value="0">
+            <div class="pill info">Angle: <b id="servo1Val">0°</b></div>
+          </div>
+
+          <div class="servo">
+            <div class="gauge">
+              <svg viewBox="0 0 100 60">
+                <path class="gTrack" d="M10,50 A40,40 0 0 1 90,50"/>
+                <path class="gFill"  d="M10,50 A40,40 0 0 1 90,50"/>
+              </svg>
+              <div class="needle" id="needle2"></div>
+              <t id="servoTxt2">0°</t>
+            </div>
+            <div class="label">Servo 2 — RY / Élévation</div>
+            <input class="esp32-control" id="servo2Range" type="range" min="0" max="180" value="0">
+            <div class="pill info">Angle: <b id="servo2Val">0°</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>© 2025 • ESP32 Dashboard</span>
+</footer>
+
+</body>
+</html>
