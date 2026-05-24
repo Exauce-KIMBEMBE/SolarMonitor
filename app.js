@@ -36,6 +36,11 @@ function loadUser(){
 try{
 
 currentUser=
+JSON.pafunction loadUser(){
+
+try{
+
+currentUser =
 JSON.parse(
 localStorage.getItem("user")
 );
@@ -43,22 +48,23 @@ localStorage.getItem("user")
 }
 catch{
 
-currentUser=null;
+currentUser = null;
 
 }
 
-if(!currentUser){
+/* Par défaut visiteur simple */
+isManager = false;
 
-window.location.href="login.html";
-return;
+/* Si connecté */
+if(currentUser){
+
+isManager =
+currentUser.role === "admin" ||
+currentUser.role === "manager";
 
 }
 
-isManager=
-
-currentUser.role==="admin" ||
-currentUser.role==="manager";
-
+/* On applique les droits sans rediriger */
 applyPermissions();
 
 }
@@ -240,27 +246,35 @@ console.log(err);
 
 async function getESP32Data(){
 
-try{
-
-const res=
-await fetch(
-
-`${API_URL}/api/esp32/data`
-
-);
-
-const s=
-await res.json();
-
-applySample(s);
-
-}
-catch(err){
-
-console.log(err);
-
-}
-
+   /* Il faut être connecté pour voir les données */
+   if(!currentUser){
+   
+   if($("conn")){
+   $("conn").textContent = "Connectez-vous pour voir les données";
+   }
+   
+   return;
+   
+   }
+   
+   try{
+   
+   const res =
+   await fetch(
+   `${API_URL}/api/esp32/data`
+   );
+   
+   const s =
+   await res.json();
+   
+   applySample(s);
+   
+   }
+   catch(err){
+   
+   console.log(err);
+   
+   }
 }
 
 
