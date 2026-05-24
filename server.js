@@ -158,115 +158,73 @@ app.get("/",(req,res)=>{
 // INSCRIPTION
 // ============================================
 
-app.post("/api/register",async(req,res)=>{
+app.post("/api/register", async (req, res) => {
+  const { firstname, lastname, email, password } = req.body;
 
-try{
+  if (!firstname || !lastname || !email || !password) {
+    return res.status(400).json({
+      error: "Tous les champs sont obligatoires"
+    });
+  }
 
-const{
-firstname,
-lastname,
-email,
-password
-}=req.body;
+  try {
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    );
 
+    if (existing.rows.length > 0) {
+      return res.status(400).json({
+        error: "Cet e-mail est déjà utilisé"
+      });
+    }
 
-if(
-!firstname ||
-!lastname ||
-!email ||
-!password
-){
+    const hash = await bcrypt.hash(password, 10);
 
-return res.status(400).json({
-error:"Tous les champs sont obligatoires"
+    const result = await pool.query(
+      `
+      INSERT INTO users
+      (
+        email,
+        password_hash,
+        role,
+        firstname,
+        lastname,
+        status
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        'user',
+        $3,
+        $4,
+        'pending'
+      )
+      RETURNING id, email, role, firstname, lastname, status, created_at
+      `,
+      [
+        email,
+        hash,
+        firstname,
+        lastname
+      ]
+    );
+
+    res.status(201).json({
+      message: "Demande d'inscription envoyée. En attente de validation par le manager.",
+      user: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Erreur /api/register :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
 });
-
-}
-
-
-const existing=
-await pool.query(
-
-"SELECT id FROM users WHERE email=$1",
-[email]
-
-);
-
-
-if(existing.rows.length>0){
-
-return res.status(400).json({
-error:"Email déjà utilisé"
-});
-
-}
-
-
-const hash=
-await bcrypt.hash(password,10);
-
-
-const result=
-await pool.query(
-
-`
-INSERT INTO users
-(
-firstname,
-lastname,
-email,
-password_hash,
-role,
-status
-)
-
-VALUES
-(
-$1,
-$2,
-$3,
-$4,
-'user',
-'pending'
-)
-
-RETURNING *
-`,
-[
-firstname,
-lastname,
-email,
-hash
-]
-
-);
-
-
-res.status(201).json({
-
-message:
-"Demande envoyée en attente validation admin",
-
-user:result.rows[0]
-
-});
-
-
-}
-
-catch(err){
-
-console.log(err);
-
-res.status(500).json({
-error:"Erreur serveur"
-});
-
-}
-
-});
-
-
 
 // ============================================
 // CONNEXION
