@@ -110,7 +110,6 @@ function adminRequired(req,res,next){
 
 // ============================================
 // Variables mémoire ESP32
-// (temporaire avant table SQL)
 // ============================================
 
 let currentCommand = {
@@ -122,13 +121,17 @@ let currentCommand = {
 
 };
 
-let solarData = {
+let solarData={};
 
-    temperature:null,
-    lux:null,
-    thermocouple:null,
-    angleX:0,
-    angleY:0
+let esp32Status={
+
+    connected:false,
+
+    lastSeen:null,
+
+    ip:null,
+
+    heap:null
 
 };
 
@@ -527,6 +530,15 @@ app.post(
 
 solarData=req.body;
 
+
+/* réception données = ESP32 vivante */
+
+esp32Status.connected=true;
+
+esp32Status.lastSeen=
+new Date().toLocaleString();
+
+
 res.json({
 
 message:"Données reçues"
@@ -552,6 +564,99 @@ solarData
 }
 );
 
+/* ============================================
+   ESP32 PING
+============================================ */
+
+app.post(
+"/api/esp32/ping",
+(req,res)=>{
+
+try{
+
+esp32Status.connected=true;
+
+esp32Status.lastSeen=
+new Date().toLocaleString();
+
+esp32Status.ip=
+req.body.ip || null;
+
+esp32Status.heap=
+req.body.heap || null;
+
+res.json({
+
+success:true
+
+});
+
+}
+catch(err){
+
+res.status(500).json({
+
+error:"Erreur ping"
+
+});
+
+}
+
+}
+);
+
+
+/* ============================================
+   ETAT ESP32
+============================================ */
+
+app.get(
+"/api/esp32/status",
+(req,res)=>{
+
+const now=
+Date.now();
+
+const last=
+esp32Status.lastSeen
+?
+new Date(
+esp32Status.lastSeen
+).getTime()
+:
+0;
+
+
+/* timeout 10 secondes */
+
+const connected=
+
+(now-last)
+<
+10000;
+
+
+esp32Status.connected=
+connected;
+
+
+res.json({
+
+connected,
+
+lastSeen:
+esp32Status.lastSeen,
+
+ip:
+esp32Status.ip,
+
+heap:
+esp32Status.heap
+
+});
+
+}
+);
 
 // ============================================
 // Lancer serveur
