@@ -1,177 +1,108 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Connexion - SolarMonitor</title>
-
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion - SolarMonitor</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <main class="auth-page">
+  <section class="card auth-card">
 
-<section class="card auth-card">
+    <h1>Connexion</h1>
 
-<h1>Connexion</h1>
+    <p class="muted">
+      Connectez-vous pour accéder aux données.
+    </p>
 
-<p class="muted">
-Connectez-vous pour accéder au tableau de bord
-</p>
+    <form id="loginForm">
+      <input id="email" type="email" placeholder="Email" required>
+      <input id="password" type="password" placeholder="Mot de passe" required>
 
-<form id="loginForm">
+      <button class="pill on-btn" type="submit" id="loginBtn">
+        Se connecter
+      </button>
+    </form>
 
-<input
-id="email"
-type="email"
-placeholder="Email"
-required>
+    <p id="message" style="font-weight:bold;"></p>
 
-<input
-id="password"
-type="password"
-placeholder="Mot de passe"
-required>
+    <p>
+      Pas encore de compte ?
+      <a href="register.html">Créer un compte</a>
+    </p>
 
-<button
-class="pill on-btn"
-type="submit">
+    <p>
+      <a href="index.html">Retour à l’accueil</a>
+    </p>
 
-Se connecter
-
-</button>
-
-</form>
-
-<p id="message"></p>
-
-<p>
-
-Pas encore de compte ?
-
-<a href="register.html">
-
-Créer un compte
-
-</a>
-
-</p>
-
-</section>
-
+  </section>
 </main>
 
-
 <script>
+const API_URL = "https://solarmonitor-5093.onrender.com";
 
-const API_URL="https://solarmonitor-5093.onrender.com";
+const form = document.getElementById("loginForm");
+const message = document.getElementById("message");
+const btn = document.getElementById("loginBtn");
 
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
 
-document
-.getElementById("loginForm")
-.addEventListener(
-"submit",
-async(e)=>{
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-e.preventDefault();
+  message.style.color = "#9fb1ff";
+  message.textContent = "Connexion en cours...";
+  btn.disabled = true;
 
-const data={
+  const data = {
+    email: emailInput.value.trim(),
+    password: passwordInput.value
+  };
 
-email:
-email.value,
+  try {
+    const res = await fetch(`${API_URL}/api/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
 
-password:
-password.value
+    const result = await res.json();
 
-};
+    if (res.ok) {
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
 
+      message.style.color = "#1cc88a";
+      message.textContent = "Connexion réussie.";
 
-try{
+      setTimeout(() => {
+        if (result.user.role === "admin" || result.user.role === "manager") {
+          window.location.href = "manager.html";
+        } else {
+          window.location.href = "index.html";
+        }
+      }, 800);
 
-const res=
-await fetch(
-`${API_URL}/api/login`,
-{
+    } else {
+      message.style.color = "#e74c3c";
+      message.textContent = result.error || "Erreur de connexion.";
+    }
 
-method:"POST",
+  } catch (err) {
+    console.error(err);
 
-headers:{
-"Content-Type":"application/json"
-},
+    message.style.color = "#e74c3c";
+    message.textContent = "Serveur inaccessible.";
+  }
 
-body:JSON.stringify(data)
-
-}
-
-);
-
-const result=
-await res.json();
-
-
-if(res.ok){
-
-localStorage.setItem(
-"token",
-result.token
-);
-
-localStorage.setItem(
-"user",
-JSON.stringify(
-result.user
-)
-);
-
-message.style.color="#1cc88a";
-
-message.textContent=
-"Connexion réussie";
-
-setTimeout(()=>{
-
-if(
-result.user.role==="admin"
-){
-
-window.location.href=
-"manager.html";
-
-}
-else{
-
-window.location.href=
-"index.html";
-
-}
-
-},1000);
-
-}
-else{
-
-message.style.color="#e74c3c";
-
-message.textContent=
-result.error;
-
-}
-
-}
-catch{
-
-message.style.color="#e74c3c";
-
-message.textContent=
-"Erreur serveur";
-
-}
-
-}
-
-);
-
+  btn.disabled = false;
+});
 </script>
 
 </body>
