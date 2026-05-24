@@ -16,6 +16,7 @@
 <h1>Manager SolarMonitor</h1>
 
 <div class="row">
+
 <a class="pill info" href="index.html">
 Accueil
 </a>
@@ -23,6 +24,7 @@ Accueil
 <button class="pill off-btn" id="logoutBtn">
 Déconnexion
 </button>
+
 </div>
 
 </div>
@@ -93,6 +95,12 @@ window.location.href=
 }
 
 
+/* utilisateurs masqués */
+
+const hiddenIds=[1,3,5,10];
+
+
+
 async function loadUsers(){
 
 message.style.color=
@@ -140,10 +148,16 @@ return;
 }
 
 
+const visibleUsers=
+users.filter(
+u=>!hiddenIds.includes(
+Number(u.id)
+)
+);
+
+
 if(
-!Array.isArray(users)
-||
-users.length===0
+visibleUsers.length===0
 ){
 
 message.textContent=
@@ -157,7 +171,7 @@ return;
 message.textContent="";
 
 
-users.forEach(user=>{
+visibleUsers.forEach(user=>{
 
 const div=
 document.createElement("div");
@@ -191,6 +205,11 @@ ${user.lastname||""}
 <p>
 Email :
 <b>${user.email}</b>
+</p>
+
+<p>
+ID :
+<b>${user.id}</b>
 </p>
 
 <p>
@@ -241,6 +260,24 @@ Refuser
 
 
 <button
+class="pill info"
+data-role="admin">
+
+Mettre Admin
+
+</button>
+
+
+<button
+class="pill info"
+data-role="user">
+
+Mettre User
+
+</button>
+
+
+<button
 class="pill off-btn"
 data-delete="true">
 
@@ -274,6 +311,30 @@ btn.dataset.status
 );
 
 });
+
+
+
+div
+.querySelectorAll(
+"[data-role]"
+)
+.forEach(btn=>{
+
+btn.addEventListener(
+"click",
+()=>{
+
+updateRole(
+user.id,
+btn.dataset.role
+);
+
+}
+
+);
+
+});
+
 
 
 div
@@ -388,6 +449,79 @@ alert(
 
 
 
+async function updateRole(
+id,
+role
+){
+
+try{
+
+const res=
+await fetch(
+
+`${API_URL}/api/admin/users/${id}/role`,
+
+{
+
+method:"PATCH",
+
+headers:{
+
+"Content-Type":
+"application/json",
+
+Authorization:
+`Bearer ${token}`
+
+},
+
+body:
+JSON.stringify({
+role
+})
+
+}
+
+);
+
+const result=
+await res.json();
+
+
+if(res.ok){
+
+message.style.color=
+"#1cc88a";
+
+message.textContent=
+"Rôle modifié";
+
+loadUsers();
+
+}
+else{
+
+alert(
+result.error
+||
+"Erreur rôle"
+);
+
+}
+
+}
+catch{
+
+alert(
+"Serveur inaccessible"
+);
+
+}
+
+}
+
+
+
 async function deleteUser(
 id,
 email
@@ -398,9 +532,7 @@ if(
 `Supprimer ${email} ?`
 )
 ){
-
 return;
-
 }
 
 
