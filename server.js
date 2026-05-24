@@ -2,161 +2,125 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const { Pool } = require("pg");
+const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ============================================
-// Middlewares
-// ============================================
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-
-// ============================================
-// PostgreSQL
-// ============================================
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl:
-        process.env.NODE_ENV === "production"
-            ? { rejectUnauthorized: false }
-            : false
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: Number(process.env.DB_PORT || 3306),
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
-
-
-// ============================================
-// JWT
-// ============================================
 
 function createToken(user) {
-
-    return jwt.sign(
-        {
-            id: user.id,
-            email: user.email,
-            role: user.role
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: "2h"
-        }
-    );
-
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "2h" }
+  );
 }
-
-
-// ============================================
-// Auth middleware
-// ============================================
 
 function authRequired(req, res, next) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
 
-    const authHeader = req.headers.authorization || "";
+  if (!token) {
+    return res.status(401).json({ error: "Token manquant" });
+  }
 
-    const token = authHeader.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : null;
-
-    if (!token) {
-        return res.status(401).json({
-            error: "Token manquant"
-        });
-    }
-
-    try {
-
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
-
-        req.user = decoded;
-
-        next();
-
-    }
-    catch {
-
-        return res.status(401).json({
-            error: "Token invalide"
-        });
-
-    }
-
-}
-
-
-function adminRequired(req,res,next){
-
-    if(!req.user || req.user.role!=="admin"){
-
-        return res.status(403).json({
-            error:"Accès administrateur uniquement"
-        });
-
-    }
-
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
-
+  } catch {
+    return res.status(401).json({ error: "Token invalide" });
+  }
 }
 
+function adminRequired(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({
+      error: "Accès réservé au manager/admin"
+    });
+  }
 
-// ============================================
-// Variables mémoire ESP32
-// ============================================
+  next();
+}
+
+async function ensureUsersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(191) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      role ENUM('user','admin') NOT NULL DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      firstname VARCHAR(100),
+      lastname VARCHAR(100),
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'
+    )
+  `);
+}
 
 let currentCommand = {
-
-    mode:"manual",
-    angleX:0,
-    angleY:0,
-    tracking:false
-
+  cmd: "none",
+  mode: "manual",
+  angleX: 0,
+  angleY: 0,
+  tracking: false
 };
 
-let solarData={};
+let solarData = {};
 
-let esp32Status={
-
-    connected:false,
-
-    lastSeen:null,
-
-    ip:null,
-
-    heap:null
-
+let esp32Status = {
+  connected: false,
+  lastSeen: null,
+  ip: null,
+  heap: null
 };
 
-
-// ============================================
-// Test serveur
-// ============================================
-
-app.get("/",(req,res)=>{
-
-    res.json({
-
-        status:true,
-        project:"SolarTrackHub",
-        message:"Serveur actif 🚀"
-
-    });
-
+app.get("/", (req, res) => {
+  res.json({
+    status: true,
+    project: "SolarMonitor",
+    message: "Serveur SolarMonitor actif"
+  });
 });
 
+app.get("/api/health", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT 1 AS ok");
+    res.json({
+      ok: true,
+      database: rows[0],
+      project: "SolarMonitor"
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
 
-
-// ============================================
-// INSCRIPTION
-// ============================================
+/* ================= INSCRIPTION ================= */
 
 app.post("/api/register", async (req, res) => {
   const { firstname, lastname, email, password } = req.body;
@@ -168,12 +132,14 @@ app.post("/api/register", async (req, res) => {
   }
 
   try {
-    const existing = await pool.query(
-      "SELECT id FROM users WHERE email = $1",
+    await ensureUsersTable();
+
+    const [existing] = await pool.query(
+      "SELECT id FROM users WHERE email = ?",
       [email]
     );
 
-    if (existing.rows.length > 0) {
+    if (existing.length > 0) {
       return res.status(400).json({
         error: "Cet e-mail est déjà utilisé"
       });
@@ -181,39 +147,27 @@ app.post("/api/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
 
-    const result = await pool.query(
+    const [result] = await pool.query(
       `
       INSERT INTO users
-      (
-        email,
-        password_hash,
-        role,
-        firstname,
-        lastname,
-        status
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        'user',
-        $3,
-        $4,
-        'pending'
-      )
-      RETURNING id, email, role, firstname, lastname, status, created_at
+      (firstname, lastname, email, password_hash, role, status)
+      VALUES (?, ?, ?, ?, 'user', 'pending')
       `,
-      [
-        email,
-        hash,
-        firstname,
-        lastname
-      ]
+      [firstname, lastname, email, hash]
+    );
+
+    const [rows] = await pool.query(
+      `
+      SELECT id, firstname, lastname, email, role, status, created_at
+      FROM users
+      WHERE id = ?
+      `,
+      [result.insertId]
     );
 
     res.status(201).json({
       message: "Demande d'inscription envoyée. En attente de validation par le manager.",
-      user: result.rows[0]
+      user: rows[0]
     });
 
   } catch (err) {
@@ -226,406 +180,308 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// ============================================
-// CONNEXION
-// ============================================
+/* ================= CONNEXION ================= */
 
-app.post("/api/login",async(req,res)=>{
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
 
-try{
+  if (!email || !password) {
+    return res.status(400).json({
+      error: "E-mail et mot de passe requis"
+    });
+  }
 
-const{
-email,
-password
-}=req.body;
+  try {
+    await ensureUsersTable();
 
+    const [rows] = await pool.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
 
-const result=
-await pool.query(
+    if (rows.length === 0) {
+      return res.status(400).json({
+        error: "Identifiants invalides"
+      });
+    }
 
-"SELECT * FROM users WHERE email=$1",
-[email]
+    const user = rows[0];
 
-);
+    const match = await bcrypt.compare(password, user.password_hash);
 
+    if (!match) {
+      return res.status(400).json({
+        error: "Identifiants invalides"
+      });
+    }
 
-if(result.rows.length===0){
+    if (user.status === "pending") {
+      return res.status(403).json({
+        error: "Compte en attente de validation par le manager"
+      });
+    }
 
-return res.status(400).json({
-error:"Identifiants invalides"
+    if (user.status === "rejected") {
+      return res.status(403).json({
+        error: "Compte refusé"
+      });
+    }
+
+    const token = createToken(user);
+
+    res.json({
+      message: "Connexion réussie",
+      token,
+      user: {
+        id: user.id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
+    });
+
+  } catch (err) {
+    console.error("Erreur /api/login :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
 });
 
-}
+/* ================= ADMIN / MANAGER ================= */
 
+app.get("/api/admin/users", authRequired, adminRequired, async (req, res) => {
+  const { status } = req.query;
 
-const user=result.rows[0];
+  try {
+    await ensureUsersTable();
 
+    let sql = `
+      SELECT id, firstname, lastname, email, role, status, created_at
+      FROM users
+    `;
 
-const match=
-await bcrypt.compare(
-password,
-user.password_hash
-);
+    const params = [];
 
+    if (status) {
+      sql += " WHERE status = ?";
+      params.push(status);
+    }
 
-if(!match){
+    sql += " ORDER BY created_at DESC";
 
-return res.status(400).json({
-error:"Identifiants invalides"
+    const [rows] = await pool.query(sql, params);
+
+    res.json(rows);
+
+  } catch (err) {
+    console.error("Erreur /api/admin/users :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
 });
 
-}
+app.patch("/api/admin/users/:id/status", authRequired, adminRequired, async (req, res) => {
+  const userId = req.params.id;
+  const { status } = req.body;
 
+  if (!["pending", "approved", "rejected"].includes(status)) {
+    return res.status(400).json({
+      error: "Statut invalide"
+    });
+  }
 
-if(user.status==="pending"){
+  try {
+    await ensureUsersTable();
 
-return res.status(403).json({
-error:"Compte en attente"
+    const [result] = await pool.query(
+      "UPDATE users SET status = ? WHERE id = ?",
+      [status, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "Utilisateur introuvable"
+      });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT id, firstname, lastname, email, role, status
+      FROM users
+      WHERE id = ?
+      `,
+      [userId]
+    );
+
+    res.json({
+      message: "Statut mis à jour",
+      user: rows[0]
+    });
+
+  } catch (err) {
+    console.error("Erreur /api/admin/users/:id/status :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
 });
 
-}
+/* ================= CREER ADMIN TEMPORAIRE ================= */
 
+app.post("/api/setup-admin", async (req, res) => {
+  const setupKey = req.headers["x-setup-key"];
 
-if(user.status==="rejected"){
+  if (!process.env.SETUP_KEY) {
+    return res.status(500).json({
+      error: "SETUP_KEY manquant côté serveur"
+    });
+  }
 
-return res.status(403).json({
-error:"Compte refusé"
+  if (!setupKey || setupKey !== process.env.SETUP_KEY) {
+    return res.status(403).json({
+      error: "Clé setup invalide"
+    });
+  }
+
+  const { firstname, lastname, email, password } = req.body;
+
+  if (!firstname || !lastname || !email || !password) {
+    return res.status(400).json({
+      error: "Tous les champs sont obligatoires"
+    });
+  }
+
+  try {
+    await ensureUsersTable();
+
+    const [existing] = await pool.query(
+      "SELECT id FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        error: "Cet e-mail est déjà utilisé"
+      });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO users
+      (firstname, lastname, email, password_hash, role, status)
+      VALUES (?, ?, ?, ?, 'admin', 'approved')
+      `,
+      [firstname, lastname, email, hash]
+    );
+
+    const [rows] = await pool.query(
+      `
+      SELECT id, firstname, lastname, email, role, status, created_at
+      FROM users
+      WHERE id = ?
+      `,
+      [result.insertId]
+    );
+
+    res.status(201).json({
+      message: "Admin créé avec succès",
+      admin: rows[0]
+    });
+
+  } catch (err) {
+    console.error("Erreur /api/setup-admin :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
 });
 
-}
+/* ================= ESP32 COMMANDES ================= */
 
-
-const token=createToken(user);
-
-
-res.json({
-
-message:"Connexion réussie",
-
-token,
-
-user:{
-
-id:user.id,
-firstname:user.firstname,
-lastname:user.lastname,
-email:user.email,
-role:user.role
-
-}
-
+app.get("/api/esp32/command", (req, res) => {
+  res.json(currentCommand);
 });
 
+app.post("/api/esp32/command", authRequired, adminRequired, (req, res) => {
+  currentCommand = {
+    ...req.body,
+    created_at: new Date().toISOString()
+  };
 
-}
-
-catch(err){
-
-console.log(err);
-
-res.status(500).json({
-error:"Erreur serveur"
+  res.json({
+    message: "Commande enregistrée",
+    command: currentCommand
+  });
 });
 
-}
+/* ================= ESP32 DATA ================= */
 
+app.post("/api/esp32/data", (req, res) => {
+  solarData = {
+    ...req.body,
+    received_at: new Date().toISOString()
+  };
+
+  esp32Status.connected = true;
+  esp32Status.lastSeen = new Date().toISOString();
+  esp32Status.ip = req.body.ip || esp32Status.ip || null;
+  esp32Status.heap = req.body.heap || esp32Status.heap || null;
+
+  res.json({
+    message: "Données reçues"
+  });
 });
 
-
-
-// ============================================
-// ADMIN USERS
-// ============================================
-
-app.get(
-"/api/admin/users",
-authRequired,
-adminRequired,
-
-async(req,res)=>{
-
-try{
-
-const users=
-await pool.query(
-
-`
-SELECT
-id,
-firstname,
-lastname,
-email,
-role,
-status
-FROM users
-`
-
-);
-
-res.json(
-users.rows
-);
-
-}
-catch(err){
-
-res.status(500).json({
-error:"Erreur serveur"
+app.get("/api/esp32/data", authRequired, (req, res) => {
+  res.json(solarData);
 });
 
-}
+/* ================= ESP32 PING / STATUS ================= */
 
-}
+app.post("/api/esp32/ping", (req, res) => {
+  esp32Status.connected = true;
+  esp32Status.lastSeen = new Date().toISOString();
+  esp32Status.ip = req.body.ip || null;
+  esp32Status.heap = req.body.heap || null;
 
-);
-
-
-
-
-// ============================================
-// Changer statut user
-// ============================================
-
-app.patch(
-"/api/admin/users/:id/status",
-authRequired,
-adminRequired,
-
-async(req,res)=>{
-
-try{
-
-const id=req.params.id;
-
-const{
-status
-}=req.body;
-
-
-const result=
-await pool.query(
-
-`
-UPDATE users
-SET status=$1
-WHERE id=$2
-RETURNING *
-`,
-[
-status,
-id
-]
-
-);
-
-
-res.json({
-
-message:"Utilisateur mis à jour",
-
-user:result.rows[0]
-
+  res.json({
+    success: true
+  });
 });
 
+app.get("/api/esp32/status", (req, res) => {
+  const now = Date.now();
 
-}
-catch(err){
+  const last = esp32Status.lastSeen
+    ? new Date(esp32Status.lastSeen).getTime()
+    : 0;
 
-res.status(500).json({
-error:"Erreur serveur"
+  const connected = now - last < 10000;
+
+  esp32Status.connected = connected;
+
+  res.json({
+    connected,
+    lastSeen: esp32Status.lastSeen,
+    ip: esp32Status.ip,
+    heap: esp32Status.heap
+  });
 });
 
-}
-
-}
-
-);
-
-
-// ============================================
-// ESP32 reçoit commande
-// ============================================
-
-app.get(
-"/api/esp32/command",
-(req,res)=>{
-
-res.json(
-currentCommand
-);
-
-}
-);
-
-
-// ============================================
-// Site envoie commande
-// ============================================
-
-app.post(
-"/api/esp32/command",
-(req,res)=>{
-
-currentCommand=req.body;
-
-res.json({
-
-message:"Commande enregistrée"
-
-});
-
-}
-);
-
-
-// ============================================
-// ESP32 envoie mesures
-// ============================================
-
-app.post(
-"/api/esp32/data",
-(req,res)=>{
-
-solarData=req.body;
-
-
-/* réception données = ESP32 vivante */
-
-esp32Status.connected=true;
-
-esp32Status.lastSeen=
-new Date().toLocaleString();
-
-
-res.json({
-
-message:"Données reçues"
-
-});
-
-}
-);
-
-
-// ============================================
-// Site lit données
-// ============================================
-
-app.get(
-"/api/esp32/data",
-(req,res)=>{
-
-res.json(
-solarData
-);
-
-}
-);
-
-/* ============================================
-   ESP32 PING
-============================================ */
-
-app.post(
-"/api/esp32/ping",
-(req,res)=>{
-
-try{
-
-esp32Status.connected=true;
-
-esp32Status.lastSeen=
-new Date().toLocaleString();
-
-esp32Status.ip=
-req.body.ip || null;
-
-esp32Status.heap=
-req.body.heap || null;
-
-res.json({
-
-success:true
-
-});
-
-}
-catch(err){
-
-res.status(500).json({
-
-error:"Erreur ping"
-
-});
-
-}
-
-}
-);
-
-
-/* ============================================
-   ETAT ESP32
-============================================ */
-
-app.get(
-"/api/esp32/status",
-(req,res)=>{
-
-const now=
-Date.now();
-
-const last=
-esp32Status.lastSeen
-?
-new Date(
-esp32Status.lastSeen
-).getTime()
-:
-0;
-
-
-/* timeout 10 secondes */
-
-const connected=
-
-(now-last)
-<
-10000;
-
-
-esp32Status.connected=
-connected;
-
-
-res.json({
-
-connected,
-
-lastSeen:
-esp32Status.lastSeen,
-
-ip:
-esp32Status.ip,
-
-heap:
-esp32Status.heap
-
-});
-
-}
-);
-
-// ============================================
-// Lancer serveur
-// ============================================
-
-app.listen(PORT,()=>{
-
-console.log(
-
-`Serveur SolarTrackHub lancé sur ${PORT}`
-
-);
-
+app.listen(PORT, () => {
+  console.log(`Serveur SolarMonitor lancé sur le port ${PORT}`);
 });
