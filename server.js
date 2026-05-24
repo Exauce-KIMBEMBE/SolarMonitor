@@ -397,6 +397,37 @@ app.post("/api/setup-admin", async (req, res) => {
   }
 });
 
+/* ================= Delete user ================= */
+app.delete("/api/admin/users/:id", authRequired, adminRequired, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const [result] = await pool.query(
+      "DELETE FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "Utilisateur introuvable"
+      });
+    }
+
+    res.json({
+      message: "Utilisateur supprimé"
+    });
+
+  } catch (err) {
+    console.error("Erreur DELETE /api/admin/users/:id :", err);
+
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
+});
+
+
 /* ================= ESP32 COMMANDES ================= */
 
 app.get("/api/esp32/command", (req, res) => {
