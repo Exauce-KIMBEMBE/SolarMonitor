@@ -10,7 +10,7 @@ const fmt=(v,nd=2)=>
 ?"—"
 :Number(v).toFixed(nd).replace(/\.0+$/,"");
 
-const API_URL="https://solarmonitor.onrender.com";
+const API_URL="https://solarmonitor-5093.onrender.com";
 
 const LUX_SCALE=1000;
 
