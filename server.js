@@ -18,10 +18,10 @@ const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT || 3306),
+  port: parseInt(process.env.DB_PORT || "3306"),
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  connectTimeout: 60000
 });
 
 function createToken(user) {
@@ -64,21 +64,6 @@ function adminRequired(req, res, next) {
   next();
 }
 
-async function ensureUsersTable() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(191) NOT NULL UNIQUE,
-      password_hash VARCHAR(255) NOT NULL,
-      role ENUM('user','admin') NOT NULL DEFAULT 'user',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      firstname VARCHAR(100),
-      lastname VARCHAR(100),
-      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'
-    )
-  `);
-}
-
 let currentCommand = {
   cmd: "none",
   mode: "manual",
@@ -106,16 +91,23 @@ app.get("/", (req, res) => {
 
 app.get("/api/health", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT 1 AS ok");
+    const [rows] = await pool.query(
+      "SELECT DATABASE() AS db, NOW() AS serverTime"
+    );
+
     res.json({
       ok: true,
-      database: rows[0],
-      project: "SolarMonitor"
+      database: rows[0]
     });
   } catch (err) {
+    console.log("MYSQL ERREUR :", err);
+
     res.status(500).json({
       ok: false,
-      error: err.message
+      message: err.message,
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState
     });
   }
 });
@@ -132,8 +124,6 @@ app.post("/api/register", async (req, res) => {
   }
 
   try {
-    await ensureUsersTable();
-
     const [existing] = await pool.query(
       "SELECT id FROM users WHERE email = ?",
       [email]
@@ -175,7 +165,8 @@ app.post("/api/register", async (req, res) => {
 
     res.status(500).json({
       error: "Erreur serveur",
-      details: err.message
+      details: err.message,
+      code: err.code
     });
   }
 });
@@ -192,8 +183,6 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    await ensureUsersTable();
-
     const [rows] = await pool.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
@@ -247,7 +236,8 @@ app.post("/api/login", async (req, res) => {
 
     res.status(500).json({
       error: "Erreur serveur",
-      details: err.message
+      details: err.message,
+      code: err.code
     });
   }
 });
@@ -258,8 +248,6 @@ app.get("/api/admin/users", authRequired, adminRequired, async (req, res) => {
   const { status } = req.query;
 
   try {
-    await ensureUsersTable();
-
     let sql = `
       SELECT id, firstname, lastname, email, role, status, created_at
       FROM users
@@ -283,7 +271,8 @@ app.get("/api/admin/users", authRequired, adminRequired, async (req, res) => {
 
     res.status(500).json({
       error: "Erreur serveur",
-      details: err.message
+      details: err.message,
+      code: err.code
     });
   }
 });
@@ -299,8 +288,6 @@ app.patch("/api/admin/users/:id/status", authRequired, adminRequired, async (req
   }
 
   try {
-    await ensureUsersTable();
-
     const [result] = await pool.query(
       "UPDATE users SET status = ? WHERE id = ?",
       [status, userId]
@@ -331,7 +318,8 @@ app.patch("/api/admin/users/:id/status", authRequired, adminRequired, async (req
 
     res.status(500).json({
       error: "Erreur serveur",
-      details: err.message
+      details: err.message,
+      code: err.code
     });
   }
 });
@@ -362,8 +350,6 @@ app.post("/api/setup-admin", async (req, res) => {
   }
 
   try {
-    await ensureUsersTable();
-
     const [existing] = await pool.query(
       "SELECT id FROM users WHERE email = ?",
       [email]
@@ -405,7 +391,8 @@ app.post("/api/setup-admin", async (req, res) => {
 
     res.status(500).json({
       error: "Erreur serveur",
-      details: err.message
+      details: err.message,
+      code: err.code
     });
   }
 });
