@@ -1,8 +1,62 @@
-D’accord. Supprime tout ton ancien `style.css`, puis colle les morceaux à la suite.
 
-## Morceau 1/3
+header{
+  position: relative;
+  top: auto;
+  max-height: none;
+  overflow: visible;
+}
 
-```css
+.statusbar{
+  position: relative;
+  top: auto;
+}
+
+header .headerTop{
+  align-items: flex-start;
+}
+
+header .headerTop h1{
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.headerTop .row,
+.headerCmd,
+.headerRep,
+#orientationCard .row,
+#scanDetailsCard .row,
+#esp32ConnectionCard .row{
+  gap: 12px;
+  row-gap: 12px;
+}
+
+.badge,
+.pill{
+  padding: 8px 12px;
+}
+
+.headerWide{
+  width: 100%;
+  margin-top: 10px;
+}
+
+#scanDetailsCard .row{
+  justify-content: flex-start;
+}
+
+#scanDetailsCard .pill{
+  min-width: 170px;
+}
+
+main{
+  padding-top: 18px;
+}
+
+@media(max-width:900px){
+  main{
+    grid-template-columns: 1fr;
+  }
+}
 /* ================== Variables ================== */
 :root{
   --bg:#0a1228;
