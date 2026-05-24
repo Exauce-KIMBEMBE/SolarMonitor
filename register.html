@@ -29,34 +29,125 @@
 </main>
 
 <script>
+
 const API_URL="https://solarmonitor-5093.onrender.com";
 
-document.getElementById("registerForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const form=
+document.getElementById("registerForm");
 
-  const data = {
-    firstname: firstname.value,
-    lastname: lastname.value,
-    email: email.value,
-    password: password.value
-  };
+const message=
+document.getElementById("message");
 
-  const res = await fetch(`${API_URL}/api/register`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(data)
-  });
+const firstnameInput=
+document.getElementById("firstname");
 
-  const result = await res.json();
-  message.textContent = result.message || result.error;
+const lastnameInput=
+document.getElementById("lastname");
 
-  if (res.ok) {
-    message.style.color = "#1cc88a";
-    registerForm.reset();
-  } else {
-    message.style.color = "#e74c3c";
-  }
-});
+const emailInput=
+document.getElementById("email");
+
+const passwordInput=
+document.getElementById("password");
+
+
+form.addEventListener(
+"submit",
+
+async(e)=>{
+
+e.preventDefault();
+
+message.style.color="#9fb1ff";
+message.textContent=
+"Envoi en cours...";
+
+
+const data={
+
+firstname:
+firstnameInput.value.trim(),
+
+lastname:
+lastnameInput.value.trim(),
+
+email:
+emailInput.value.trim(),
+
+password:
+passwordInput.value
+
+};
+
+
+try{
+
+const res=
+await fetch(
+
+`${API_URL}/api/register`,
+
+{
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:
+JSON.stringify(data)
+
+}
+
+);
+
+
+const result=
+await res.json();
+
+
+if(res.ok){
+
+message.style.color=
+"#1cc88a";
+
+message.textContent=
+
+result.message ||
+"Inscription envoyée";
+
+form.reset();
+
+}
+else{
+
+message.style.color=
+"#e74c3c";
+
+message.textContent=
+
+result.error ||
+"Erreur inscription";
+
+}
+
+}
+catch(err){
+
+console.log(err);
+
+message.style.color=
+"#e74c3c";
+
+message.textContent=
+"Serveur inaccessible";
+
+}
+
+}
+
+);
+
 </script>
 
 </body>
