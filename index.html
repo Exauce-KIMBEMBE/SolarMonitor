@@ -15,6 +15,7 @@
 <header id="appHeader">
   <div class="headerTop">
     <h1>Dashboard Système solaire</h1>
+
     <div class="row">
       <span class="badge" id="conn">ESP32 : Déconnectée</span>
       <span class="badge" id="state">Mesure inactive</span>
@@ -24,6 +25,10 @@
       <span class="badge">Lux: <b id="liveLux">—</b></span>
       <span class="badge">Hum: <b id="liveHumidity">—</b></span>
       <span class="badge">TC: <b id="liveTc">—</b></span>
+
+      <a class="pill info" href="login.html" id="loginLink">Connexion</a>
+      <a class="pill on-btn" href="register.html" id="registerLink">Inscription</a>
+      <button class="pill off-btn" id="logoutBtn" style="display:none;">Déconnexion</button>
     </div>
   </div>
 
@@ -59,7 +64,7 @@
         color:#ff9090;
         font-weight:bold;
       ">
-      Carte ESP32 déconnectée : les commandes sont désactivées.
+      Connectez-vous pour voir les données. Seul le manager peut contrôler le panneau.
     </div>
   </div>
 
@@ -208,7 +213,7 @@
     <div class="row" style="margin-top:12px">
       <button class="pill info" id="btnToggleHistory">Afficher historique</button>
       <button class="pill info" id="btnDownloadAllMeasures">⬇ Export TOUTES les mesures (CSV)</button>
-      <button class="pill off-btn" id="btnClearHistory">🗑 Vider historique</button>
+      <button class="pill off-btn esp32-control" id="btnClearHistory">🗑 Vider historique</button>
       <button class="pill off-btn" id="btnClearDisplay">🧹 Réinitialiser l’affichage</button>
     </div>
 
