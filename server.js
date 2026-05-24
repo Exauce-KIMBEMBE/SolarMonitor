@@ -399,7 +399,13 @@ app.post("/api/setup-admin", async (req, res) => {
 
 /* ================= Delete user ================= */
 app.delete("/api/admin/users/:id", authRequired, adminRequired, async (req, res) => {
-  const userId = req.params.id;
+  const userId = Number(req.params.id);
+
+  if ([1, 3, 5, 10].includes(userId)) {
+    return res.status(403).json({
+      error: "Cet utilisateur est protégé"
+    });
+  }
 
   try {
     const [result] = await pool.query(
@@ -418,8 +424,6 @@ app.delete("/api/admin/users/:id", authRequired, adminRequired, async (req, res)
     });
 
   } catch (err) {
-    console.error("Erreur DELETE /api/admin/users/:id :", err);
-
     res.status(500).json({
       error: "Erreur serveur",
       details: err.message
@@ -427,6 +431,46 @@ app.delete("/api/admin/users/:id", authRequired, adminRequired, async (req, res)
   }
 });
 
+/* ================= chargement DB ================= */
+app.patch("/api/admin/users/:id/role", authRequired, adminRequired, async (req, res) => {
+  const userId = Number(req.params.id);
+  const { role } = req.body;
+
+  if (![ "admin", "user" ].includes(role)) {
+    return res.status(400).json({
+      error: "Rôle invalide"
+    });
+  }
+
+  if ([1, 3, 5, 10].includes(userId)) {
+    return res.status(403).json({
+      error: "Cet utilisateur est protégé"
+    });
+  }
+
+  try {
+    const [result] = await pool.query(
+      "UPDATE users SET role = ? WHERE id = ?",
+      [role, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "Utilisateur introuvable"
+      });
+    }
+
+    res.json({
+      message: "Rôle modifié"
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      error: "Erreur serveur",
+      details: err.message
+    });
+  }
+});
 
 /* ================= ESP32 COMMANDES ================= */
 
