@@ -985,6 +985,30 @@ function applySample(s) {
     !!s.state &&
     s.phase === "scan";
 
+  if (inScan) {
+    showScanOverlay();
+
+    const step =
+      Number(s.line ?? 0);
+
+    const pct =
+      Math.min(
+        100,
+        Math.round(step * 100 / 255)
+      );
+
+    if ($("scanProgressFill"))
+      $("scanProgressFill").style.width =
+        pct + "%";
+
+    if ($("scanCount"))
+      $("scanCount").textContent =
+        `Point ${step} / 255`;
+  }
+  else {
+    hideScanOverlay();
+  }
+
   const isRising =
     (!wasScanning && inScan) ||
     (inScan && s.seq === 0);
@@ -1855,6 +1879,17 @@ function enableRipple(){
     });
   });
 }
+
+
+function showScanOverlay() {
+  $("scanOverlay")?.classList.remove("hidden");
+}
+
+function hideScanOverlay() {
+  $("scanOverlay")?.classList.add("hidden");
+}
+
+
 
 /* ------------------------- Boot --------------------------- */
 
