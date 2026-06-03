@@ -741,3 +741,84 @@ grid-template-columns:1fr;
 }
 
 }
+
+
+.scanOverlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+
+  background:rgba(0,0,0,.75);
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  backdrop-filter:blur(4px);
+}
+
+.scanOverlay.hidden{
+  display:none;
+}
+
+.scanBox{
+  width:420px;
+  max-width:90%;
+
+  background:#0f224d;
+
+  border:2px solid #2c69ff;
+  border-radius:20px;
+
+  padding:30px;
+
+  text-align:center;
+
+  box-shadow:0 0 40px rgba(0,100,255,.4);
+}
+
+.scanSpinner{
+  width:80px;
+  height:80px;
+
+  margin:auto;
+
+  border:8px solid rgba(255,255,255,.2);
+  border-top:8px solid #00ff88;
+  border-radius:50%;
+
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  from{transform:rotate(0deg);}
+  to{transform:rotate(360deg);}
+}
+
+#scanProgressBar{
+  height:20px;
+  margin-top:20px;
+
+  background:#06122d;
+  border-radius:20px;
+
+  overflow:hidden;
+}
+
+#scanProgressFill{
+  height:100%;
+  width:0%;
+
+  background:#00d27a;
+
+  transition:.2s;
+}
+
+#scanCount{
+  margin-top:15px;
+  font-size:18px;
+  font-weight:bold;
+}
+
+
+
