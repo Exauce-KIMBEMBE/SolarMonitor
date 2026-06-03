@@ -744,89 +744,124 @@ function updateHistorySelectionUI() {
 }
 
 function showHistoryEntry(id) {
+
   const entry = ivHistory.find(x => x.id === id);
   if (!entry) return;
 
   selectedScanId = id;
 
   uiChart.data.datasets[0].data = entry.points;
+
   pChart.data.datasets[0].data =
-    entry.points.map(p => ({ x: p.x, y: p.x * p.y }));
+    entry.points.map(p => ({
+      x: p.x,
+      y: p.x * p.y
+    }));
 
+  /* ===== Auto Zoom ===== */
 
-  const maxU = Math.max(...points.map(p => p.x));
-  const maxI = Math.max(...points.map(p => p.y));
-  const maxP = Math.max(...points.map(p => p.x * p.y));
+  const maxU =
+    Math.max(...entry.points.map(p => p.x));
 
-  const xMaxAuto = Number.isFinite(maxU) && maxU > 0
-    ? maxU * 1.15
-    : 1;
+  const maxI =
+    Math.max(...entry.points.map(p => p.y));
 
-  const yMaxAuto = Number.isFinite(maxI) && maxI > 0
-    ? maxI * 1.20
-    : 1;
+  const maxP =
+    Math.max(...entry.points.map(p => p.x * p.y));
 
-  const pMaxAuto = Number.isFinite(maxP) && maxP > 0
-    ? maxP * 1.25
-    : 1;
+  const xMaxAuto =
+    Number.isFinite(maxU) && maxU > 0
+      ? maxU * 1.15
+      : 1;
+
+  const yMaxAuto =
+    Number.isFinite(maxI) && maxI > 0
+      ? maxI * 1.20
+      : 1;
+
+  const pMaxAuto =
+    Number.isFinite(maxP) && maxP > 0
+      ? maxP * 1.25
+      : 1;
 
   uiChart.options.scales.x.min = 0;
   uiChart.options.scales.x.max = xMaxAuto;
+
   uiChart.options.scales.yI.min = 0;
   uiChart.options.scales.yI.max = yMaxAuto;
 
   pChart.options.scales.x.min = 0;
   pChart.options.scales.x.max = xMaxAuto;
+
   pChart.options.scales.yP.min = 0;
   pChart.options.scales.yP.max = pMaxAuto;
 
-  const umax = Number(entry.meta?.umax);
-
-  let xMax = Number.isFinite(umax)
-    ? umax * 1.08
-    : (entry.points.at(-1)?.x || 40);
-
-  xMax = Math.max(
-    UI_VOLT_MIN_HARD,
-    Math.min(UI_VOLT_MAX_HARD, xMax)
-  );
-
-  const stepX = xMax <= 10 ? 0.5 : 1;
-
-  uiChart.options.scales.x.min = 0;
-  uiChart.options.scales.x.max = Math.ceil(xMax / stepX) * stepX;
-  uiChart.options.scales.x.ticks.stepSize = stepX;
-
-  pChart.options.scales.x.min = 0;
-  pChart.options.scales.x.max = uiChart.options.scales.x.max;
-  pChart.options.scales.x.ticks.stepSize = stepX;
-
-  const { uK, iK } = iuPointsToK(entry.points);
+  const { uK, iK } =
+    iuPointsToK(entry.points);
 
   iChart.data.datasets[0].data = iK;
   uChart.data.datasets[0].data = uK;
 
-  iChart.options.scales.x.max = Math.max(1, entry.points.length - 1);
-  uChart.options.scales.x.max = Math.max(1, entry.points.length - 1);
+  iChart.options.scales.x.max =
+    Math.max(1, entry.points.length - 1);
 
-  if ($("stepCount")) $("stepCount").textContent = String(entry.points.length);
+  uChart.options.scales.x.max =
+    Math.max(1, entry.points.length - 1);
+
+  if ($("stepCount"))
+    $("stepCount").textContent =
+      String(entry.points.length);
 
   const m = entry.meta || {};
 
   lastIvMeta = { ...m };
   lastIvPoints = entry.points.slice();
 
-  lastIsc = Number.isFinite(m.isc) ? m.isc : lastIsc;
-  lastVoc = Number.isFinite(m.voc) ? m.voc : lastVoc;
+  lastIsc =
+    Number.isFinite(m.isc)
+      ? m.isc
+      : lastIsc;
+
+  lastVoc =
+    Number.isFinite(m.voc)
+      ? m.voc
+      : lastVoc;
 
   autoscaleIaxis(lastIsc);
 
-  if ($("uiCount")) $("uiCount").textContent = String(entry.points.length);
-  if ($("vmpp")) $("vmpp").textContent = Number.isFinite(m.vmpp) ? fmt(m.vmpp, 2) : "—";
-  if ($("impp")) $("impp").textContent = Number.isFinite(m.impp) ? fmt(m.impp, 3) : "—";
-  if ($("pmpp")) $("pmpp").textContent = Number.isFinite(m.pmpp) ? fmt(m.pmpp, 2) : "—";
-  if ($("iscVal")) $("iscVal").textContent = Number.isFinite(m.isc) ? fmt(m.isc, 3) : "—";
-  if ($("vocVal")) $("vocVal").textContent = Number.isFinite(m.voc) ? fmt(m.voc, 2) : "—";
+  if ($("uiCount"))
+    $("uiCount").textContent =
+      String(entry.points.length);
+
+  if ($("vmpp"))
+    $("vmpp").textContent =
+      Number.isFinite(m.vmpp)
+        ? fmt(m.vmpp, 2)
+        : "—";
+
+  if ($("impp"))
+    $("impp").textContent =
+      Number.isFinite(m.impp)
+        ? fmt(m.impp, 3)
+        : "—";
+
+  if ($("pmpp"))
+    $("pmpp").textContent =
+      Number.isFinite(m.pmpp)
+        ? fmt(m.pmpp, 2)
+        : "—";
+
+  if ($("iscVal"))
+    $("iscVal").textContent =
+      Number.isFinite(m.isc)
+        ? fmt(m.isc, 3)
+        : "—";
+
+  if ($("vocVal"))
+    $("vocVal").textContent =
+      Number.isFinite(m.voc)
+        ? fmt(m.voc, 2)
+        : "—";
 
   uiChart.update("none");
   pChart.update("none");
@@ -1161,6 +1196,8 @@ function applySample(s) {
 
 function applyIvSummary(s) {
 
+  hideScanOverlay();
+
   applyOrientationStatus(s);
 
   const U =
@@ -1185,11 +1222,8 @@ function applyIvSummary(s) {
 
   for (let k = 0; k < N; k++) {
 
-    const u =
-      Number(U[k]);
-
-    const i =
-      Number(I[k]);
+    const u = Number(U[k]);
+    const i = Number(I[k]);
 
     if (
       Number.isFinite(u) &&
@@ -1204,36 +1238,21 @@ function applyIvSummary(s) {
     }
   }
 
-  points.sort(
-    (a, b) =>
-      a.x - b.x
-  );
+  points.sort((a, b) => a.x - b.x);
 
   const meta = {
 
-    vmpp:
-      Number(s.vmpp),
+    vmpp: Number(s.vmpp),
+    impp: Number(s.impp),
+    pmpp: Number(s.pmpp),
 
-    impp:
-      Number(s.impp),
+    isc: Number(s.isc_a),
+    voc: Number(s.voc_v),
 
-    pmpp:
-      Number(s.pmpp),
+    umax: Number(s.umax),
 
-    isc:
-      Number(s.isc_a),
-
-    voc:
-      Number(s.voc_v),
-
-    umax:
-      Number(s.umax),
-
-    servo1_deg:
-      Number(s.servo1_deg),
-
-    servo2_deg:
-      Number(s.servo2_deg),
+    servo1_deg: Number(s.servo1_deg),
+    servo2_deg: Number(s.servo2_deg),
 
     orient_mode:
       s.orient_mode ??
@@ -1243,11 +1262,8 @@ function applyIvSummary(s) {
       Number(s.series)
   };
 
-  lastIvMeta =
-    { ...meta };
-
-  lastIvPoints =
-    points.slice();
+  lastIvMeta = { ...meta };
+  lastIvPoints = points.slice();
 
   lastIsc =
     Number.isFinite(meta.isc)
@@ -1259,18 +1275,63 @@ function applyIvSummary(s) {
       ? meta.voc
       : lastVoc;
 
-  autoscaleIaxis(
-    lastIsc
-  );
+  autoscaleIaxis(lastIsc);
 
-  uiChart.data.datasets[0].data =
-    points;
+  /* ===========================
+     COURBE I(U)
+     =========================== */
+
+  uiChart.data.datasets[0].data = points;
+
+  /* ===========================
+     COURBE P(U)
+     =========================== */
 
   pChart.data.datasets[0].data =
     points.map(p => ({
       x: p.x,
       y: p.x * p.y
     }));
+
+  /* ===========================
+     AUTO ZOOM
+     =========================== */
+
+  const maxU =
+    Math.max(...points.map(p => p.x));
+
+  const maxI =
+    Math.max(...points.map(p => p.y));
+
+  const maxP =
+    Math.max(...points.map(p => p.x * p.y));
+
+  const xMaxAuto =
+    Number.isFinite(maxU) && maxU > 0
+      ? maxU * 1.15
+      : 1;
+
+  const yMaxAuto =
+    Number.isFinite(maxI) && maxI > 0
+      ? maxI * 1.20
+      : 1;
+
+  const pMaxAuto =
+    Number.isFinite(maxP) && maxP > 0
+      ? maxP * 1.25
+      : 1;
+
+  uiChart.options.scales.x.min = 0;
+  uiChart.options.scales.x.max = xMaxAuto;
+
+  uiChart.options.scales.yI.min = 0;
+  uiChart.options.scales.yI.max = yMaxAuto;
+
+  pChart.options.scales.x.min = 0;
+  pChart.options.scales.x.max = xMaxAuto;
+
+  pChart.options.scales.yP.min = 0;
+  pChart.options.scales.yP.max = pMaxAuto;
 
   /* ===========================
      REPERES Vmpp / Impp / MPP
@@ -1282,14 +1343,8 @@ function applyIvSummary(s) {
       Number.isFinite(meta.impp)
     )
       ? [
-          {
-            x: meta.vmpp,
-            y: 0
-          },
-          {
-            x: meta.vmpp,
-            y: meta.impp
-          }
+          { x: meta.vmpp, y: 0 },
+          { x: meta.vmpp, y: meta.impp }
         ]
       : [];
 
@@ -1299,14 +1354,8 @@ function applyIvSummary(s) {
       Number.isFinite(meta.impp)
     )
       ? [
-          {
-            x: 0,
-            y: meta.impp
-          },
-          {
-            x: meta.vmpp,
-            y: meta.impp
-          }
+          { x: 0, y: meta.impp },
+          { x: meta.vmpp, y: meta.impp }
         ]
       : [];
 
@@ -1380,11 +1429,8 @@ function applyIvSummary(s) {
   const { uK, iK } =
     iuPointsToK(points);
 
-  iChart.data.datasets[0].data =
-    iK;
-
-  uChart.data.datasets[0].data =
-    uK;
+  iChart.data.datasets[0].data = iK;
+  uChart.data.datasets[0].data = uK;
 
   iChart.options.scales.x.max =
     Math.max(
@@ -1419,37 +1465,16 @@ function applyIvSummary(s) {
     samples: currentScanSamples.slice(),
     meta: { ...meta },
     env: {
-      luxAvg:
-        avg(
-          currentScanSamples.map(
-            x => x.lux
-          )
-        ),
-      tempAvg:
-        avg(
-          currentScanSamples.map(
-            x => x.temp_dht_c
-          )
-        ),
-      humAvg:
-        avg(
-          currentScanSamples.map(
-            x => x.hum_dht
-          )
-        ),
-      tcAvg:
-        avg(
-          currentScanSamples.map(
-            x => x.tc_c
-          )
-        )
+      luxAvg: avg(currentScanSamples.map(x => x.lux)),
+      tempAvg: avg(currentScanSamples.map(x => x.temp_dht_c)),
+      humAvg: avg(currentScanSamples.map(x => x.hum_dht)),
+      tcAvg: avg(currentScanSamples.map(x => x.tc_c))
     }
   };
 
   ivHistory.push(entry);
 
-  selectedScanId =
-    entry.id;
+  selectedScanId = entry.id;
 
   renderHistoryList();
 }
