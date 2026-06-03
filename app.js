@@ -206,22 +206,34 @@ async function pollESP32Data() {
 /* ------------------- Orientation solaire ------------------- */
 let currentOrientMode = "manual";
 let currentTracker = false;
+let pendingOrientUntil = 0;
+let pendingTrackerUntil = 0;
+let pendingServoUntil = 0;
+
 
 function getSelectedOrientMode() {
   const el = document.querySelector('input[name="orientMode"]:checked');
   return el ? el.value : currentOrientMode || "manual";
 }
 
-function setOrientModeUI(mode) {
+
+function setOrientModeUI(mode, updateRadio = true) {
   if (!mode) return;
+
   currentOrientMode = String(mode);
 
-  const radio = document.querySelector(`input[name="orientMode"][value="${currentOrientMode}"]`);
-  if (radio) radio.checked = true;
+  if (updateRadio) {
+    const radio = document.querySelector(
+      `input[name="orientMode"][value="${currentOrientMode}"]`
+    );
+
+    if (radio) radio.checked = true;
+  }
 
   if ($("orientModeTxt")) $("orientModeTxt").textContent = currentOrientMode;
   if ($("orientModeBar")) $("orientModeBar").textContent = currentOrientMode;
 }
+
 
 function setTrackerUI(enabled) {
   currentTracker = !!enabled;
@@ -235,25 +247,46 @@ function setBoolTxt(id, v) {
   else el.textContent = v ? "ON" : "OFF";
 }
 
+
 function applyOrientationStatus(s) {
   if (!s || typeof s !== "object") return;
 
-  if ("orient_mode" in s) setOrientModeUI(s.orient_mode);
-  if ("tracker" in s) setTrackerUI(!!s.tracker);
+  const now = Date.now();
+
+  if ("orient_mode" in s && now > pendingOrientUntil) {
+    setOrientModeUI(s.orient_mode, true);
+  }
+
+  if ("tracker" in s && now > pendingTrackerUntil) {
+    setTrackerUI(!!s.tracker);
+  }
 
   if ("ldr_l" in s) setBoolTxt("ldrL", !!s.ldr_l);
   if ("ldr_r" in s) setBoolTxt("ldrR", !!s.ldr_r);
   if ("ldr_h" in s) setBoolTxt("ldrH", !!s.ldr_h);
   if ("ldr_b" in s) setBoolTxt("ldrB", !!s.ldr_b);
 
-  if ("servo1_deg" in s && $("servo1Live")) $("servo1Live").textContent = `${Number(s.servo1_deg) | 0}°`;
-  if ("servo2_deg" in s && $("servo2Live")) $("servo2Live").textContent = `${Number(s.servo2_deg) | 0}°`;
+  if ("servo1_deg" in s && now > pendingServoUntil) {
+    setServoAngleUI(1, s.servo1_deg);
+  }
+
+  if ("servo2_deg" in s && now > pendingServoUntil) {
+    setServoAngleUI(2, s.servo2_deg);
+  }
 }
+
 
 function sendOrientMode() {
   const mode = getSelectedOrientMode();
-  setOrientModeUI(mode);
-  sendCmd({ cmd: "orient", mode });
+
+  pendingOrientUntil = Date.now() + 3000;
+
+  setOrientModeUI(mode, true);
+
+  sendCmd({
+    cmd: "orient",
+    mode
+  });
 }
 
 /* ------------------- Charts ------------------- */
@@ -1023,26 +1056,22 @@ function applySample(s) {
   if (inScan) {
     showScanOverlay();
 
-    const step =
-      Number(s.line ?? 0);
+    const step = Number(s.line ?? 0);
+    const pct = Math.min(100, Math.round(step * 100 / 255));
 
-    const pct =
-      Math.min(
-        100,
-        Math.round(step * 100 / 255)
-      );
+    if ($("scanProgressFill")) {
+      $("scanProgressFill").style.width = pct + "%";
+    }
 
-    if ($("scanProgressFill"))
-      $("scanProgressFill").style.width =
-        pct + "%";
+    if ($("scanCount")) {
+      $("scanCount").textContent = `Point ${step} / 255`;
+    }
 
-    if ($("scanCount"))
-      $("scanCount").textContent =
-        `Point ${step} / 255`;
+    if ($("scanProgressTxt")) {
+      $("scanProgressTxt").textContent = `Progression : ${pct}%`;
+    }
   }
-  else {
-    hideScanOverlay();
-  }
+  
 
   const isRising =
     (!wasScanning && inScan) ||
@@ -1590,6 +1619,7 @@ function setServoAngle(idx, angle) {
       Math.min(180, Number(angle) || 0)
     );
 
+  pendingServoUntil = Date.now() + 1000;
   setServoAngleUI(idx, a);
 
   sendCmd({
@@ -1684,6 +1714,7 @@ function wireButtons() {
     });
 
   $("btnTrackerOn")?.addEventListener("click", () => {
+    pendingTrackerUntil = Date.now() + 3000;
     setTrackerUI(true);
 
     sendCmd({
@@ -1693,6 +1724,7 @@ function wireButtons() {
   });
 
   $("btnTrackerOff")?.addEventListener("click", () => {
+    btnTrackerOff
     setTrackerUI(false);
 
     sendCmd({
