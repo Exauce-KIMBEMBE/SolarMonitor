@@ -254,7 +254,10 @@ function applyOrientationStatus(s) {
   const now = Date.now();
 
   if ("orient_mode" in s && now > pendingOrientUntil) {
-    setOrientModeUI(s.orient_mode, true);
+    currentOrientMode = String(s.orient_mode);
+
+    if ($("orientModeTxt")) $("orientModeTxt").textContent = currentOrientMode;
+    if ($("orientModeBar")) $("orientModeBar").textContent = currentOrientMode;
   }
 
   if ("tracker" in s && now > pendingTrackerUntil) {
@@ -274,7 +277,6 @@ function applyOrientationStatus(s) {
     setServoAngleUI(2, s.servo2_deg);
   }
 }
-
 
 function sendOrientMode() {
   const mode = getSelectedOrientMode();
@@ -1707,9 +1709,12 @@ function wireButtons() {
     .querySelectorAll('input[name="orientMode"]')
     .forEach(el => {
       el.addEventListener("change", () => {
-        setOrientModeUI(
-          getSelectedOrientMode()
-        );
+        pendingOrientUntil = Date.now() + 10000;
+
+        const mode = getSelectedOrientMode();
+
+        if ($("orientModeTxt")) $("orientModeTxt").textContent = mode;
+        if ($("orientModeBar")) $("orientModeBar").textContent = mode;
       });
     });
 
@@ -1724,7 +1729,8 @@ function wireButtons() {
   });
 
   $("btnTrackerOff")?.addEventListener("click", () => {
-    btnTrackerOff
+    pendingTrackerUntil = Date.now() + 3000;
+
     setTrackerUI(false);
 
     sendCmd({
