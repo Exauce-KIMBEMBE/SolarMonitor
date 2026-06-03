@@ -753,6 +753,33 @@ function showHistoryEntry(id) {
   pChart.data.datasets[0].data =
     entry.points.map(p => ({ x: p.x, y: p.x * p.y }));
 
+
+  const maxU = Math.max(...points.map(p => p.x));
+  const maxI = Math.max(...points.map(p => p.y));
+  const maxP = Math.max(...points.map(p => p.x * p.y));
+
+  const xMaxAuto = Number.isFinite(maxU) && maxU > 0
+    ? maxU * 1.15
+    : 1;
+
+  const yMaxAuto = Number.isFinite(maxI) && maxI > 0
+    ? maxI * 1.20
+    : 1;
+
+  const pMaxAuto = Number.isFinite(maxP) && maxP > 0
+    ? maxP * 1.25
+    : 1;
+
+  uiChart.options.scales.x.min = 0;
+  uiChart.options.scales.x.max = xMaxAuto;
+  uiChart.options.scales.yI.min = 0;
+  uiChart.options.scales.yI.max = yMaxAuto;
+
+  pChart.options.scales.x.min = 0;
+  pChart.options.scales.x.max = xMaxAuto;
+  pChart.options.scales.yP.min = 0;
+  pChart.options.scales.yP.max = pMaxAuto;
+
   const umax = Number(entry.meta?.umax);
 
   let xMax = Number.isFinite(umax)
