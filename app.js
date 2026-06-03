@@ -1674,7 +1674,19 @@ function wireButtons() {
   $("btnStart")?.addEventListener("click", () => {
     const mode = getSelectedOrientMode();
 
-    setOrientModeUI(mode);
+    pendingOrientUntil = Date.now() + 10000;
+    setOrientModeUI(mode, true);
+
+    showScanOverlay();
+
+    if ($("scanProgressTxt"))
+      $("scanProgressTxt").textContent = "Démarrage de la mesure...";
+
+    if ($("scanProgressFill"))
+      $("scanProgressFill").style.width = "0%";
+
+    if ($("scanCount"))
+      $("scanCount").textContent = "Préparation...";
 
     sendCmd({
       cmd: "start",
@@ -1691,7 +1703,19 @@ function wireButtons() {
   $("btnScanFull")?.addEventListener("click", () => {
     const mode = getSelectedOrientMode();
 
-    setOrientModeUI(mode);
+    pendingOrientUntil = Date.now() + 10000;
+    setOrientModeUI(mode, true);
+
+    showScanOverlay();
+
+    if ($("scanProgressTxt"))
+      $("scanProgressTxt").textContent = "Initialisation du scan...";
+
+    if ($("scanProgressFill"))
+      $("scanProgressFill").style.width = "0%";
+
+    if ($("scanCount"))
+      $("scanCount").textContent = "Préparation...";
 
     sendCmd({
       cmd: "scan",
