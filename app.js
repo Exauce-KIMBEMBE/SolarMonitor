@@ -21,6 +21,8 @@ let isManager = false;
 let esp32Connected = false;
 let lastDataSignature = "";
 
+let scanOverlayTimer = null;
+
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -1056,17 +1058,31 @@ function applySample(s) {
     s.phase === "scan";
 
   if (inScan) {
+    clearTimeout(scanOverlayTimer);
     showScanOverlay();
 
     const step = Number(s.line ?? 0);
-    const pct = Math.min(100, Math.round(step * 100 / 255));
+    const serie = Number(s.series ?? 0);
+    const totalSeries = 4;
+
+    const globalStep = serie * 256 + step;
+    const globalTotal = totalSeries * 256;
+
+    const pct = Math.min(
+      100,
+      Math.round(globalStep * 100 / globalTotal)
+    );
 
     if ($("scanProgressFill")) {
       $("scanProgressFill").style.width = pct + "%";
     }
 
     if ($("scanCount")) {
-      $("scanCount").textContent = `Point ${step} / 255`;
+      const serie = Number(s.series ?? 0) + 1;
+      const totalSeries = 4;
+
+      $("scanCount").textContent =
+        `Série ${serie} / ${totalSeries} — Point ${step} / 255`;
     }
 
     if ($("scanProgressTxt")) {
@@ -1227,6 +1243,7 @@ function applySample(s) {
 
 function applyIvSummary(s) {
 
+  clearTimeout(scanOverlayTimer);
   hideScanOverlay();
 
   applyOrientationStatus(s);
@@ -1427,6 +1444,17 @@ function applyIvSummary(s) {
     $("uiCount").textContent =
       String(points.length);
 
+  const serieDisplay =
+  Number.isFinite(meta.series)
+    ? meta.series + 1
+    : 1;
+
+  if ($("scanProgressTxt")) {
+    $("scanProgressTxt").textContent =
+      `Série ${serieDisplay} terminée`;
+  }
+
+
   if ($("vmpp"))
     $("vmpp").textContent =
       Number.isFinite(meta.vmpp)
@@ -1510,6 +1538,23 @@ function applyIvSummary(s) {
   renderHistoryList();
 }
 
+
+function startScanOverlayTimeout() {
+  clearTimeout(scanOverlayTimer);
+
+  scanOverlayTimer = setTimeout(() => {
+    if ($("scanProgressTxt"))
+      $("scanProgressTxt").textContent =
+        "Aucune donnée reçue de l’ESP32. Vérifiez la connexion.";
+
+    if ($("scanCount"))
+      $("scanCount").textContent =
+        "Mesure non confirmée";
+
+    if ($("scanProgressFill"))
+      $("scanProgressFill").style.width = "0%";
+  }, 10000);
+}
 
 /* ------------------------- UI / boutons ------------------------- */
 
@@ -1678,6 +1723,7 @@ function wireButtons() {
     setOrientModeUI(mode, true);
 
     showScanOverlay();
+    startScanOverlayTimeout();
 
     if ($("scanProgressTxt"))
       $("scanProgressTxt").textContent = "Démarrage de la mesure...";
@@ -1707,6 +1753,7 @@ function wireButtons() {
     setOrientModeUI(mode, true);
 
     showScanOverlay();
+    startScanOverlayTimeout();
 
     if ($("scanProgressTxt"))
       $("scanProgressTxt").textContent = "Initialisation du scan...";
