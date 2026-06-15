@@ -927,79 +927,84 @@ function deleteScan(id) {
   renderHistoryList();
 }
 
+
 function downloadScanMeasuresCsv(id) {
   const entry = ivHistory.find(x => x.id === id);
   if (!entry) return;
 
   let csv =
-    "k;seq;ts_ms;line;u_v;i_a;lux;temp_dht_c;hum_dht;tc_c;servo1_deg;servo2_deg;orient_mode\n";
+    "k;u_v;i_a;p_w;scan;date;servo1_deg;servo2_deg;orient_mode;vmpp;impp;pmpp;isc;voc\n";
 
-  for (const r of entry.samples || []) {
+  const pts = entry.points || [];
+  const m = entry.meta || {};
+
+  for (let k = 0; k < pts.length; k++) {
+    const p = pts[k];
+
     csv += [
-      r.k,
-      r.seq,
-      r.ts_ms,
-      r.line,
-      r.u_v,
-      r.i_a,
-      r.lux,
-      r.temp_dht_c,
-      r.hum_dht,
-      r.tc_c,
-      r.servo1_deg,
-      r.servo2_deg,
-      r.orient_mode
+      k,
+      p.x,
+      p.y,
+      p.x * p.y,
+      entry.id,
+      new Date(entry.ts).toLocaleString(),
+      m.servo1_deg ?? "",
+      m.servo2_deg ?? "",
+      m.orient_mode ?? "",
+      m.vmpp ?? "",
+      m.impp ?? "",
+      m.pmpp ?? "",
+      m.isc ?? "",
+      m.voc ?? ""
     ].join(";") + "\n";
   }
 
-  const blob = new Blob(
-    [csv],
-    { type: "text/csv;charset=utf-8" }
-  );
-
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
 
   a.href = URL.createObjectURL(blob);
-  a.download = `scan_${id}.csv`;
+  a.download = `scan_${id}_courbe_IV.csv`;
   a.click();
 
   URL.revokeObjectURL(a.href);
 }
 
+
 function downloadAllMeasuresCsv() {
   let csv =
-    "scan;k;seq;ts_ms;line;u_v;i_a;lux;temp_dht_c;hum_dht;tc_c;servo1_deg;servo2_deg;orient_mode\n";
+    "scan;k;u_v;i_a;p_w;date;servo1_deg;servo2_deg;orient_mode;vmpp;impp;pmpp;isc;voc\n";
 
   for (const scan of ivHistory) {
-    for (const r of scan.samples || []) {
+    const pts = scan.points || [];
+    const m = scan.meta || {};
+
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k];
+
       csv += [
         scan.id,
-        r.k,
-        r.seq,
-        r.ts_ms,
-        r.line,
-        r.u_v,
-        r.i_a,
-        r.lux,
-        r.temp_dht_c,
-        r.hum_dht,
-        r.tc_c,
-        r.servo1_deg,
-        r.servo2_deg,
-        r.orient_mode
+        k,
+        p.x,
+        p.y,
+        p.x * p.y,
+        new Date(scan.ts).toLocaleString(),
+        m.servo1_deg ?? "",
+        m.servo2_deg ?? "",
+        m.orient_mode ?? "",
+        m.vmpp ?? "",
+        m.impp ?? "",
+        m.pmpp ?? "",
+        m.isc ?? "",
+        m.voc ?? ""
       ].join(";") + "\n";
     }
   }
 
-  const blob = new Blob(
-    [csv],
-    { type: "text/csv;charset=utf-8" }
-  );
-
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
 
   a.href = URL.createObjectURL(blob);
-  a.download = "solar_monitor_toutes_mesures.csv";
+  a.download = "solar_monitor_courbes_IV.csv";
   a.click();
 
   URL.revokeObjectURL(a.href);
