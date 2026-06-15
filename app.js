@@ -13,7 +13,7 @@ const fmt = (v, nd = 3) =>
 const LUX_SCALE = 1000;
 const UI_VOLT_MAX_HARD = 60;
 const UI_VOLT_MIN_HARD = 1;
-const PANEL_VOLTAGE_SCALE = 15.0 / 2.208;
+const PANEL_VOLTAGE_SCALE = 4;
 
 const API_URL = "https://solarmonitor-5093.onrender.com";
 
@@ -1161,8 +1161,10 @@ function applySample(s) {
   if (inScan) {
 
     const U =
-      const U =
-        Number(s.u_v) * PANEL_VOLTAGE_SCALE;
+      Math.min(
+        Number(s.u_v) * PANEL_VOLTAGE_SCALE,
+        20
+      );
 
     const I =
       Number(s.i_a);
@@ -1277,7 +1279,11 @@ function applyIvSummary(s) {
 
   for (let k = 0; k < N; k++) {
 
-    const u = Number(U[k]) * PANEL_VOLTAGE_SCALE;
+    const u = Math.min(
+      Number(U[k]) * PANEL_VOLTAGE_SCALE,
+      20
+    );
+    
     const i = Number(I[k]);
 
     if (
@@ -1297,9 +1303,9 @@ function applyIvSummary(s) {
 
   const meta = {
 
-    vmpp: Number(s.vmpp) * PANEL_VOLTAGE_SCALE,
-    voc: Number(s.voc_v) * PANEL_VOLTAGE_SCALE,
-    umax: Number(s.umax) * PANEL_VOLTAGE_SCALE,
+    vmpp: Math.min(Number(s.vmpp) * PANEL_VOLTAGE_SCALE, 20),
+    voc:  Math.min(Number(s.voc_v) * PANEL_VOLTAGE_SCALE, 20),
+    umax: Math.min(Number(s.umax) * PANEL_VOLTAGE_SCALE, 20),
 
     isc: Number(s.isc_a),
     voc: Number(s.voc_v),
