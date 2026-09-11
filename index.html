@@ -1,318 +1,2383 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Système solaire</title>
 
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
-  <script src="app.js" defer></script>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+
+  <title>SolarMonitor</title>
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  />
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js">
+  </script>
+
+  <script
+    src="app.js"
+    defer>
+  </script>
 </head>
+
 
 <body>
 
-<header id="appHeader">
-  <div class="headerTop">
-    <h1>Dashboard Système solaire</h1>
 
-    <div class="row">
-      <span class="badge" id="conn">ESP32 : Déconnectée</span>
-      <span class="badge" id="state">Mesure inactive</span>
-      <span class="badge">Mode orientation: <b id="orientModeTxt">manual</b></span>
-      <span class="badge">Tracker: <b id="trackerTxt">OFF</b></span>
-      <span class="badge">Temp: <b id="liveTemp">—</b></span>
-      <span class="badge">Lux: <b id="liveLux">—</b></span>
-      <span class="badge">Hum: <b id="liveHumidity">—</b></span>
-      <span class="badge">TC: <b id="liveTc">—</b></span>
+<!-- =========================================================
+     APPLICATION
+     ========================================================= -->
 
-      <a class="pill info" href="login.html" id="loginLink">Connexion</a>
-      <a class="pill on-btn" href="register.html" id="registerLink">Inscription</a>
-      <button class="pill off-btn" id="logoutBtn" style="display:none;">Déconnexion</button>
+<div class="appShell">
+
+
+  <!-- =======================================================
+       MENU LATERAL
+       ======================================================= -->
+
+  <aside
+    class="sidebar"
+    id="sidebar"
+  >
+
+    <div class="sidebarBrand">
+
+      <div class="brandIcon">
+        ☀
+      </div>
+
+      <div class="brandText">
+
+        <h1>
+          SolarMonitor
+        </h1>
+
+        <p>
+          Suivi et caractérisation
+          <br>
+          de panneaux solaires
+        </p>
+
+      </div>
+
     </div>
-  </div>
 
-  <div class="row headerCmd">
-    <button class="pill on-btn esp32-control" id="btnStart">▶ Start</button>
-    <button class="pill off-btn esp32-control" id="btnStop">■ Stop</button>
-    <button class="pill on-btn esp32-control" id="btnScanFull">⏱ Lancer 2^8</button>
 
-    <input class="esp32-control" id="periodMs" type="number" min="0" step="100" placeholder="Intervalle (ms)">
-    <button class="pill info esp32-control" id="btnSetPeriod">↻ Appliquer</button>
-  </div>
+    <!-- =====================================================
+         NAVIGATION PRINCIPALE
+         ===================================================== -->
 
-  <div class="card headerWide" id="esp32ConnectionCard">
-    <h3>Connexion ESP32</h3>
+    <nav class="sidebarNav">
 
-    <div class="row">
-      <span class="pill info">État : <b id="esp32Status">Déconnectée</b></span>
-      <span class="pill info">Dernier signal : <b id="esp32LastSeen">—</b></span>
-      <span class="pill info">IP : <b id="esp32Ip">—</b></span>
+      <button
+        class="navItem active"
+        type="button"
+        data-page="overview"
+      >
+        <span class="navIcon">⌂</span>
 
-      <button class="pill on-btn" id="btnManualConnect">
-        🔌 Connexion manuelle
+        <span>
+          Vue générale
+        </span>
       </button>
+
+
+      <button
+        class="navItem"
+        type="button"
+        data-page="measurement"
+      >
+        <span class="navIcon">⌁</span>
+
+        <span>
+          Mesure I-V
+        </span>
+      </button>
+
+
+      <button
+        class="navItem"
+        type="button"
+        data-page="sensors"
+      >
+        <span class="navIcon">◉</span>
+
+        <span>
+          Capteurs
+        </span>
+      </button>
+
+
+      <button
+        class="navItem"
+        type="button"
+        data-page="orientation"
+      >
+        <span class="navIcon">⚙</span>
+
+        <span>
+          Orientation
+        </span>
+      </button>
+
+
+      <button
+        class="navItem"
+        type="button"
+        data-page="history"
+      >
+        <span class="navIcon">▤</span>
+
+        <span>
+          Historique
+        </span>
+      </button>
+
+
+      <!-- ===============================================
+           ADMINISTRATION
+           Affiché uniquement pour ADMIN par app.js
+           =============================================== -->
+
+      <a
+        class="navItem"
+        href="manager.html"
+        id="adminLink"
+        style="display:none;"
+      >
+        <span class="navIcon">♟</span>
+
+        <span>
+          Gestion utilisateurs
+        </span>
+      </a>
+
+    </nav>
+
+
+    <!-- =====================================================
+         COMPTE UTILISATEUR
+         ===================================================== -->
+
+    <div class="sidebarBottom">
+
+
+      <!-- Rôle actuellement connecté -->
+
+      <div
+        class="sidebarUserInfo"
+        id="sidebarUserInfo"
+      >
+
+        <span
+          style="
+            display:block;
+            font-size:11px;
+            opacity:.65;
+            margin-bottom:3px;
+          "
+        >
+          Niveau d'accès
+        </span>
+
+        <strong id="userRole">
+          Visiteur
+        </strong>
+
+      </div>
+
+
+      <!-- Connexion -->
+
+      <a
+        class="navItem"
+        href="login.html"
+        id="loginLink"
+      >
+        <span class="navIcon">⇥</span>
+
+        <span>
+          Connexion
+        </span>
+      </a>
+
+
+      <!-- Inscription -->
+
+      <a
+        class="navItem"
+        href="register.html"
+        id="registerLink"
+      >
+        <span class="navIcon">＋</span>
+
+        <span>
+          Inscription
+        </span>
+      </a>
+
+
+      <!-- Déconnexion -->
+
+      <button
+        class="navItem danger"
+        id="logoutBtn"
+        type="button"
+        style="display:none;"
+      >
+        <span class="navIcon">⇤</span>
+
+        <span>
+          Déconnexion
+        </span>
+      </button>
+
+
+      <div class="sidebarVersion">
+        SolarMonitor
+      </div>
+
     </div>
 
-    <div
-      id="esp32Warning"
-      style="
-        margin-top:12px;
-        padding:10px;
-        border-radius:8px;
-        background:#3b1010;
-        color:#ff9090;
-        font-weight:bold;
-      ">
-      Connectez-vous pour voir les données. Seul le manager peut contrôler le panneau.
-    </div>
+  </aside>
+
+
+
+  <!-- =======================================================
+       CONTENU PRINCIPAL
+       ======================================================= -->
+
+  <div class="mainArea">
+
+
+    <!-- =====================================================
+         BARRE SUPERIEURE
+         ===================================================== -->
+
+    <header
+      class="topbar"
+      id="appHeader"
+    >
+
+      <div class="topbarLeft">
+
+        <button
+          id="sidebarToggle"
+          class="sidebarToggle"
+          type="button"
+        >
+          ☰
+        </button>
+
+
+        <div>
+
+          <h2 id="pageTitle">
+            Vue générale
+          </h2>
+
+          <p id="pageSubtitle">
+            État du système et données en temps réel
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="topbarRight">
+
+        <div class="topStatus">
+
+          <span
+            class="statusDot"
+            id="topEspDot">
+          </span>
+
+          <span id="conn">
+            ESP32 : Déconnectée
+          </span>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         BANDEAU ETAT SYSTEME
+         ===================================================== -->
+
+    <section class="systemStatusGrid">
+
+
+      <!-- ESP32 -->
+
+      <article class="statusCard">
+
+        <div class="statusCardIcon">
+          ◉
+        </div>
+
+        <div>
+
+          <span class="statusLabel">
+            ESP32
+          </span>
+
+          <strong id="esp32Status">
+            Déconnectée
+          </strong>
+
+          <small>
+            Dernier signal :
+            <span id="esp32LastSeen">
+              —
+            </span>
+          </small>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- Mesure -->
+
+      <article class="statusCard">
+
+        <div class="statusCardIcon">
+          ▶
+        </div>
+
+        <div>
+
+          <span class="statusLabel">
+            Mesure
+          </span>
+
+          <strong id="state">
+            Mesure inactive
+          </strong>
+
+          <small>
+            Phase :
+            <span id="phase">
+              —
+            </span>
+          </small>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- Orientation -->
+
+      <article class="statusCard">
+
+        <div class="statusCardIcon">
+          ⚙
+        </div>
+
+        <div>
+
+          <span class="statusLabel">
+            Mode orientation
+          </span>
+
+          <strong id="orientModeTxt">
+            manual
+          </strong>
+
+          <small>
+            Positionnement du panneau
+          </small>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- Tracker -->
+
+      <article class="statusCard">
+
+        <div class="statusCardIcon">
+          ☀
+        </div>
+
+        <div>
+
+          <span class="statusLabel">
+            Tracker solaire
+          </span>
+
+          <strong id="trackerTxt">
+            OFF
+          </strong>
+
+          <small>
+            Suivi automatique
+          </small>
+
+        </div>
+
+      </article>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         MESSAGE CONNEXION / DROITS
+         ===================================================== -->
+
+    <section
+      class="card esp32WarningCard"
+      id="esp32ConnectionCard"
+    >
+
+      <div class="sectionHeader">
+
+        <div>
+
+          <h3>
+            Connexion ESP32
+          </h3>
+
+          <p>
+            État de la passerelle de communication
+          </p>
+
+        </div>
+
+
+        <button
+          class="pill info"
+          id="btnManualConnect"
+          type="button"
+        >
+          ↻ Vérifier la connexion
+        </button>
+
+      </div>
+
+
+      <div class="connectionDetails">
+
+        <span>
+          IP :
+          <b id="esp32Ip">
+            —
+          </b>
+        </span>
+
+      </div>
+
+
+      <div
+        id="esp32Warning"
+        class="warningBox"
+      >
+        Connectez-vous pour accéder à SolarMonitor.
+      </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         PAGES
+         ===================================================== -->
+
+    <main class="dashboardContent">
+
+
+      <!-- ===================================================
+           PAGE : VUE GENERALE
+           =================================================== -->
+
+      <section
+        class="dashboardPage activePage"
+        id="page-overview"
+        data-page-content="overview"
+      >
+
+
+        <div class="sectionTitle">
+
+          <div>
+
+            <h2>
+              Données des capteurs
+            </h2>
+
+            <p>
+              Valeurs instantanées reçues du système
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- =================================================
+             CARTES CAPTEURS
+             ================================================= -->
+
+        <div class="sensorSummaryGrid">
+
+
+          <article class="sensorSummaryCard luxCard">
+
+            <div class="sensorIcon">
+              ☀
+            </div>
+
+            <div>
+
+              <span>
+                Luminosité
+              </span>
+
+              <strong id="liveLux">
+                —
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <article class="sensorSummaryCard tempCard">
+
+            <div class="sensorIcon">
+              ♨
+            </div>
+
+            <div>
+
+              <span>
+                Température DHT
+              </span>
+
+              <strong id="liveTemp">
+                —
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <article class="sensorSummaryCard humCard">
+
+            <div class="sensorIcon">
+              ◉
+            </div>
+
+            <div>
+
+              <span>
+                Humidité
+              </span>
+
+              <strong id="liveHumidity">
+                —
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <article class="sensorSummaryCard tcCard">
+
+            <div class="sensorIcon">
+              ♨
+            </div>
+
+            <div>
+
+              <span>
+                Thermocouple
+              </span>
+
+              <strong id="liveTc">
+                —
+              </strong>
+
+            </div>
+
+          </article>
+
+        </div>
+
+
+
+        <!-- =================================================
+             POSITION + LDR
+             ================================================= -->
+
+        <div class="overviewGrid">
+
+
+          <!-- Position -->
+
+          <section class="card">
+
+            <div class="sectionHeader">
+
+              <div>
+
+                <h3>
+                  Position du panneau
+                </h3>
+
+                <p>
+                  Orientation actuelle
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="overviewServoValues">
+
+              <div class="overviewServo">
+
+                <span>
+                  RX / Azimut
+                </span>
+
+                <strong id="servo1Live">
+                  —°
+                </strong>
+
+              </div>
+
+
+              <div class="overviewServo">
+
+                <span>
+                  RY / Élévation
+                </span>
+
+                <strong id="servo2Live">
+                  —°
+                </strong>
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- LDR -->
+
+          <section class="card">
+
+            <div class="sectionHeader">
+
+              <div>
+
+                <h3>
+                  Capteurs LDR
+                </h3>
+
+                <p>
+                  Détection de la direction lumineuse
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="ldrMiniGrid">
+
+              <div>
+                Gauche
+                <b id="ldrL">—</b>
+              </div>
+
+              <div>
+                Droite
+                <b id="ldrR">—</b>
+              </div>
+
+              <div>
+                Haut
+                <b id="ldrH">—</b>
+              </div>
+
+              <div>
+                Bas
+                <b id="ldrB">—</b>
+              </div>
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+
+        <!-- =================================================
+             DERNIERE CARACTERISATION
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Dernière caractérisation I-V
+              </h3>
+
+              <p>
+                Résumé de la dernière mesure effectuée
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="mainParamsGrid">
+
+
+            <div class="parameterCard">
+
+              <span>
+                Isc
+              </span>
+
+              <strong id="iscVal">
+                —
+              </strong>
+
+              <small>
+                A
+              </small>
+
+            </div>
+
+
+            <div class="parameterCard">
+
+              <span>
+                Voc
+              </span>
+
+              <strong id="vocVal">
+                —
+              </strong>
+
+              <small>
+                V
+              </small>
+
+            </div>
+
+
+            <div class="parameterCard">
+
+              <span>
+                Vmpp
+              </span>
+
+              <strong id="vmpp">
+                —
+              </strong>
+
+              <small>
+                V
+              </small>
+
+            </div>
+
+
+            <div class="parameterCard">
+
+              <span>
+                Impp
+              </span>
+
+              <strong id="impp">
+                —
+              </strong>
+
+              <small>
+                A
+              </small>
+
+            </div>
+
+
+            <div class="parameterCard">
+
+              <span>
+                Pmpp
+              </span>
+
+              <strong id="pmpp">
+                —
+              </strong>
+
+              <small>
+                W
+              </small>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+      </section>
+
+
+
+      <!-- ===================================================
+           PAGE : MESURE I-V
+           =================================================== -->
+
+      <section
+        class="dashboardPage"
+        id="page-measurement"
+        data-page-content="measurement"
+      >
+
+
+        <!-- =================================================
+             COMMANDES MESURE
+             USER = désactivées
+             MANAGER / ADMIN = autorisées
+             ================================================= -->
+
+        <section class="card measurementControlCard">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h2>
+                Caractérisation I-V
+              </h2>
+
+              <p>
+                Acquisition de 256 points de fonctionnement
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="measurementButtons">
+
+            <button
+              class="pill on-btn esp32-control primaryMeasureButton"
+              id="btnScanFull"
+              type="button"
+            >
+              ▶ Lancer une mesure I-V
+
+              <small>
+                256 points
+              </small>
+            </button>
+
+
+            <button
+              class="pill on-btn esp32-control"
+              id="btnStart"
+              type="button"
+            >
+              ▶ Lancer une série de mesures
+            </button>
+
+
+            <button
+              class="pill off-btn esp32-control"
+              id="btnStop"
+              type="button"
+            >
+              ■ Arrêter la mesure
+            </button>
+
+          </div>
+
+
+          <div class="measurementSettings">
+
+            <label>
+
+              Intervalle
+
+              <input
+                class="esp32-control"
+                id="periodMs"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="Intervalle (ms)"
+              />
+
+            </label>
+
+
+            <button
+              class="pill info esp32-control"
+              id="btnSetPeriod"
+              type="button"
+            >
+              Appliquer
+            </button>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             COURBES I(U) ET P(U)
+             ================================================= -->
+
+        <div class="chartGridTwo">
+
+
+          <!-- I(U) -->
+
+          <section class="card chartCard">
+
+            <div class="chartHeader">
+
+              <div>
+
+                <h3>
+                  Courbe I(U)
+                </h3>
+
+                <p>
+                  Courant en fonction de la tension
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox mainChartBox">
+
+              <canvas id="uiChart">
+              </canvas>
+
+            </div>
+
+
+            <div class="measurementValues">
+
+              <span>
+                U :
+                <b id="uEff">
+                  —
+                </b>
+                V
+              </span>
+
+
+              <span>
+                I :
+                <b id="iEff">
+                  —
+                </b>
+                A
+              </span>
+
+
+              <span>
+                Points :
+                <b id="uiCount">
+                  0
+                </b>
+              </span>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- P(U) -->
+
+          <section class="card chartCard">
+
+            <div class="chartHeader">
+
+              <div>
+
+                <h3>
+                  Courbe P(U)
+                </h3>
+
+                <p>
+                  Puissance en fonction de la tension
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox mainChartBox">
+
+              <canvas id="pChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+
+        <!-- =================================================
+             U(k) ET I(k)
+             ================================================= -->
+
+        <div class="chartGridTwo">
+
+
+          <!-- U par mesure -->
+
+          <section class="card chartCard">
+
+            <div class="chartHeader">
+
+              <div>
+
+                <h3>
+                  U par mesure
+                </h3>
+
+                <p>
+                  Tension en fonction de l'indice k
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox stepBox">
+
+              <canvas id="uChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- I par mesure -->
+
+          <section class="card chartCard">
+
+            <div class="chartHeader">
+
+              <div>
+
+                <h3>
+                  I par mesure
+                </h3>
+
+                <p>
+                  Courant en fonction de l'indice k
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox stepBox">
+
+              <canvas id="iChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+
+        <!-- =================================================
+             PARAMETRES MESURE
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Paramètres de la mesure
+              </h3>
+
+            </div>
+
+          </div>
+
+
+          <div class="measurementParameterGrid">
+
+
+            <span class="badge">
+
+              k :
+              <b id="stepCount">
+                0
+              </b>
+
+            </span>
+
+
+            <span class="badge">
+
+              Seq :
+              <b id="seq">
+                —
+              </b>
+
+            </span>
+
+
+            <span class="badge">
+
+              Temps :
+              <b id="ts">
+                —
+              </b>
+              ms
+
+            </span>
+
+
+            <span class="badge">
+
+              Pattern :
+              <b id="line">
+                —
+              </b>
+
+            </span>
+
+
+            <span class="badge">
+
+              Orientation :
+              <b id="orientModeBar">
+                —
+              </b>
+
+            </span>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             REPERES
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Repères des courbes
+              </h3>
+
+            </div>
+
+          </div>
+
+
+          <div class="referenceGrid">
+
+
+            <label class="badge">
+
+              <input
+                id="chkI0"
+                type="checkbox"
+              />
+
+              Axe I = 0
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="chkU0"
+                type="checkbox"
+              />
+
+              Axe U = 0
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="chkIsc"
+                type="checkbox"
+              />
+
+              Isc
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="chkVoc"
+                type="checkbox"
+              />
+
+              Voc
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="chkUref"
+                type="checkbox"
+              />
+
+              Uref =
+
+              <input
+                id="uRefVal"
+                type="number"
+                step="0.001"
+              />
+
+              V
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="chkIref"
+                type="checkbox"
+              />
+
+              Iref =
+
+              <input
+                id="iRefVal"
+                type="number"
+                step="0.000001"
+              />
+
+              A
+
+            </label>
+
+          </div>
+
+        </section>
+
+
+      </section>
+
+
+
+      <!-- ===================================================
+           PAGE : CAPTEURS
+           =================================================== -->
+
+      <section
+        class="dashboardPage"
+        id="page-sensors"
+        data-page-content="sensors"
+      >
+
+
+        <div class="sectionTitle">
+
+          <div>
+
+            <h2>
+              Capteurs environnementaux
+            </h2>
+
+            <p>
+              Suivi indépendant de chaque grandeur
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="sensorChartsGrid">
+
+
+          <!-- LUX -->
+
+          <section class="card sensorChartCard">
+
+            <div class="sensorChartHeader">
+
+              <div>
+
+                <span class="sensorDot luxDot">
+                </span>
+
+                <div>
+
+                  <h3>
+                    Luminosité
+                  </h3>
+
+                  <p>
+                    Lux
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox sensorChartBox">
+
+              <canvas id="luxChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- TEMPERATURE -->
+
+          <section class="card sensorChartCard">
+
+            <div class="sensorChartHeader">
+
+              <div>
+
+                <span class="sensorDot tempDot">
+                </span>
+
+                <div>
+
+                  <h3>
+                    Température DHT
+                  </h3>
+
+                  <p>
+                    °C
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox sensorChartBox">
+
+              <canvas id="tempChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- HUMIDITE -->
+
+          <section class="card sensorChartCard">
+
+            <div class="sensorChartHeader">
+
+              <div>
+
+                <span class="sensorDot humDot">
+                </span>
+
+                <div>
+
+                  <h3>
+                    Humidité
+                  </h3>
+
+                  <p>
+                    %
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox sensorChartBox">
+
+              <canvas id="humChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- THERMOCOUPLE -->
+
+          <section class="card sensorChartCard">
+
+            <div class="sensorChartHeader">
+
+              <div>
+
+                <span class="sensorDot tcDot">
+                </span>
+
+                <div>
+
+                  <h3>
+                    Thermocouple
+                  </h3>
+
+                  <p>
+                    °C
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="chartBox sensorChartBox">
+
+              <canvas id="tcChart">
+              </canvas>
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+
+        <!-- =================================================
+             NAVIGATION GRAPHIQUES
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sensorNavigationControls">
+
+
+            <label class="badge">
+
+              Fenêtre
+
+              <input
+                id="winSize"
+                type="number"
+                min="20"
+                max="2000"
+                step="10"
+                value="150"
+              />
+
+              points
+
+            </label>
+
+
+            <label class="badge">
+
+              Défilement
+
+              <input
+                id="chartScroll"
+                type="range"
+                min="0"
+                max="0"
+                value="0"
+              />
+
+            </label>
+
+
+            <label class="badge">
+
+              <input
+                id="autoFollow"
+                type="checkbox"
+                checked
+              />
+
+              Suivre en direct
+
+            </label>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             CANVAS DE COMPATIBILITE
+             ================================================= -->
+
+        <div style="display:none">
+
+          <canvas id="chart">
+          </canvas>
+
+        </div>
+
+
+      </section>
+
+
+
+      <!-- ===================================================
+           PAGE : ORIENTATION
+           =================================================== -->
+
+      <section
+        class="dashboardPage"
+        id="page-orientation"
+        data-page-content="orientation"
+      >
+
+
+        <div
+          class="card"
+          id="orientationCard"
+        >
+
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h2>
+                Orientation du panneau solaire
+              </h2>
+
+              <p>
+                Positionnement manuel ou automatique
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- =================================================
+               MODE
+               ================================================= -->
+
+          <div class="orientationSection">
+
+            <h3>
+              Mode avant mesure
+            </h3>
+
+
+            <div class="orientationModeGrid">
+
+
+              <label class="orientationChoice">
+
+                <input
+                  class="esp32-control"
+                  type="radio"
+                  name="orientMode"
+                  id="orientManual"
+                  value="manual"
+                  checked
+                />
+
+                <div>
+
+                  <strong>
+                    Manuel
+                  </strong>
+
+                  <span>
+                    Utiliser la position actuelle
+                  </span>
+
+                </div>
+
+              </label>
+
+
+
+              <label class="orientationChoice">
+
+                <input
+                  class="esp32-control"
+                  type="radio"
+                  name="orientMode"
+                  id="orientAutoLight"
+                  value="auto_light"
+                />
+
+                <div>
+
+                  <strong>
+                    Auto luminosité
+                  </strong>
+
+                  <span>
+                    Recherche automatique de la lumière
+                  </span>
+
+                </div>
+
+              </label>
+
+
+
+              <label class="orientationChoice">
+
+                <input
+                  class="esp32-control"
+                  type="radio"
+                  name="orientMode"
+                  id="orientPreset"
+                  value="preset"
+                />
+
+                <div>
+
+                  <strong>
+                    Angles préenregistrés
+                  </strong>
+
+                  <span>
+                    Utiliser les positions programmées
+                  </span>
+
+                </div>
+
+              </label>
+
+            </div>
+
+
+            <div class="orientationActions">
+
+              <button
+                class="pill info esp32-control"
+                id="btnApplyOrient"
+                type="button"
+              >
+                Appliquer le mode
+              </button>
+
+
+              <button
+                class="pill info esp32-control"
+                id="btnStatus"
+                type="button"
+              >
+                Lire le statut
+              </button>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- =================================================
+               TRACKER
+               ================================================= -->
+
+          <div class="orientationSection">
+
+            <h3>
+              Suiveur solaire hors mesure
+            </h3>
+
+
+            <div class="trackerActions">
+
+              <button
+                class="pill on-btn esp32-control"
+                id="btnTrackerOn"
+                type="button"
+              >
+                ☀ Activer le tracker
+              </button>
+
+
+              <button
+                class="pill off-btn esp32-control"
+                id="btnTrackerOff"
+                type="button"
+              >
+                Désactiver le tracker
+              </button>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- =================================================
+               LDR
+               ================================================= -->
+
+          <div class="orientationSection">
+
+            <h3>
+              État des capteurs LDR
+            </h3>
+
+
+            <div class="ldrStatusGrid">
+
+
+              <div class="ldrStatus">
+
+                <span>
+                  Gauche
+                </span>
+
+                <b id="ldrOrientationL">
+                  —
+                </b>
+
+              </div>
+
+
+              <div class="ldrStatus">
+
+                <span>
+                  Droite
+                </span>
+
+                <b id="ldrOrientationR">
+                  —
+                </b>
+
+              </div>
+
+
+              <div class="ldrStatus">
+
+                <span>
+                  Haut
+                </span>
+
+                <b id="ldrOrientationH">
+                  —
+                </b>
+
+              </div>
+
+
+              <div class="ldrStatus">
+
+                <span>
+                  Bas
+                </span>
+
+                <b id="ldrOrientationB">
+                  —
+                </b>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- =================================================
+               SERVOS
+               ================================================= -->
+
+          <div class="orientationSection">
+
+            <div class="sectionHeader">
+
+              <div>
+
+                <h3>
+                  Position des servomoteurs
+                </h3>
+
+                <p>
+                  Le panneau reste bloqué pendant une mesure I-V
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="gauges">
+
+
+              <!-- SERVO 1 -->
+
+              <div class="servo">
+
+                <div class="gauge">
+
+                  <svg viewBox="0 0 100 60">
+
+                    <path
+                      class="gTrack"
+                      d="M10,50 A40,40 0 0 1 90,50"
+                    />
+
+                    <path
+                      class="gFill"
+                      d="M10,50 A40,40 0 0 1 90,50"
+                    />
+
+                  </svg>
+
+
+                  <div
+                    class="needle"
+                    id="needle1">
+                  </div>
+
+
+                  <t id="servoTxt1">
+                    0°
+                  </t>
+
+                </div>
+
+
+                <div class="label">
+
+                  Servo 1
+                  <br>
+
+                  <strong>
+                    RX / Azimut
+                  </strong>
+
+                </div>
+
+
+                <input
+                  class="esp32-control"
+                  id="servo1Range"
+                  type="range"
+                  min="0"
+                  max="180"
+                  value="0"
+                />
+
+
+                <div class="servoAngleBox">
+
+                  Angle :
+
+                  <b id="servo1Val">
+                    0°
+                  </b>
+
+                </div>
+
+              </div>
+
+
+
+              <!-- SERVO 2 -->
+
+              <div class="servo">
+
+                <div class="gauge">
+
+                  <svg viewBox="0 0 100 60">
+
+                    <path
+                      class="gTrack"
+                      d="M10,50 A40,40 0 0 1 90,50"
+                    />
+
+                    <path
+                      class="gFill"
+                      d="M10,50 A40,40 0 0 1 90,50"
+                    />
+
+                  </svg>
+
+
+                  <div
+                    class="needle"
+                    id="needle2">
+                  </div>
+
+
+                  <t id="servoTxt2">
+                    0°
+                  </t>
+
+                </div>
+
+
+                <div class="label">
+
+                  Servo 2
+                  <br>
+
+                  <strong>
+                    RY / Élévation
+                  </strong>
+
+                </div>
+
+
+                <input
+                  class="esp32-control"
+                  id="servo2Range"
+                  type="range"
+                  min="0"
+                  max="180"
+                  value="0"
+                />
+
+
+                <div class="servoAngleBox">
+
+                  Angle :
+
+                  <b id="servo2Val">
+                    0°
+                  </b>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+        </div>
+
+
+      </section>
+
+
+
+      <!-- ===================================================
+           PAGE : HISTORIQUE
+           =================================================== -->
+
+      <section
+        class="dashboardPage"
+        id="page-history"
+        data-page-content="history"
+      >
+
+
+        <!-- =================================================
+             DETAILS DU SCAN
+             ================================================= -->
+
+        <section
+          class="card"
+          id="scanDetailsCard"
+        >
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h2>
+                Détails du scan
+              </h2>
+
+              <p>
+                Informations sur la caractérisation sélectionnée
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="scanInfoGrid">
+
+
+            <div>
+
+              <span>
+                Scan
+              </span>
+
+              <b id="histSelId">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Date
+              </span>
+
+              <b id="histSelTs">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Points
+              </span>
+
+              <b id="histSelPts">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Durée
+              </span>
+
+              <b id="histSelDur">
+                —
+              </b>
+
+            </div>
+
+          </div>
+
+
+
+          <div class="historySensorStats">
+
+
+            <div>
+
+              <span>
+                Lux min / moy / max
+              </span>
+
+              <b id="histLux">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Température min / moy / max
+              </span>
+
+              <b id="histTemp">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Humidité min / moy / max
+              </span>
+
+              <b id="histHum">
+                —
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Thermocouple min / moy / max
+              </span>
+
+              <b id="histTc">
+                —
+              </b>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             ACTIONS HISTORIQUE
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="historyActions">
+
+
+            <button
+              class="pill info"
+              id="btnToggleHistory"
+              type="button"
+            >
+              Afficher historique
+            </button>
+
+
+            <button
+              class="pill info"
+              id="btnDownloadAllMeasures"
+              type="button"
+            >
+              ↓ Exporter toutes les mesures CSV
+            </button>
+
+
+            <button
+              class="pill info"
+              id="btnExportSelectedScan"
+              type="button"
+            >
+              ↓ Exporter le scan sélectionné
+            </button>
+
+
+            <!--
+              Manager / Admin uniquement.
+              app.js bloque ce bouton pour USER.
+            -->
+
+            <button
+              class="pill off-btn esp32-control"
+              id="btnClearHistory"
+              type="button"
+            >
+              Vider historique
+            </button>
+
+
+            <!--
+              Manager / Admin uniquement.
+            -->
+
+            <button
+              class="pill off-btn esp32-control"
+              id="btnDeleteSelectedScan"
+              type="button"
+            >
+              Supprimer le scan
+            </button>
+
+
+            <button
+              class="pill off-btn"
+              id="btnClearDisplay"
+              type="button"
+            >
+              Réinitialiser l'affichage
+            </button>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             LISTE HISTORIQUE
+             ================================================= -->
+
+        <section
+          class="card"
+          id="historyCard"
+        >
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Scans enregistrés
+              </h3>
+
+              <p>
+                Historique permanent des caractérisations I-V
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            id="historyList"
+            class="historyList"
+          >
+          </div>
+
+        </section>
+
+
+      </section>
+
+
+    </main>
+
+
+
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
+
+    <footer class="appFooter">
+
+      <span>
+        © 2026 • SolarMonitor
+      </span>
+
+      <span>
+        Système de caractérisation photovoltaïque
+      </span>
+
+    </footer>
+
+
   </div>
 
-  <div class="card headerWide" id="orientationCard">
-    <h3>Orientation solaire</h3>
-
-    <div class="row">
-      <span class="pill info" style="pointer-events:none">Mode avant mesure</span>
-
-      <label class="badge">
-        <input class="esp32-control" type="radio" name="orientMode" id="orientManual" value="manual" checked>
-        Manuel
-      </label>
-
-      <label class="badge">
-        <input class="esp32-control" type="radio" name="orientMode" id="orientAutoLight" value="auto_light">
-        Auto luminosité
-      </label>
-
-      <label class="badge">
-        <input class="esp32-control" type="radio" name="orientMode" id="orientPreset" value="preset">
-        Angles préenregistrés
-      </label>
-
-      <button class="pill info esp32-control" id="btnApplyOrient">Appliquer mode</button>
-      <button class="pill info esp32-control" id="btnStatus">Lire statut</button>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="pill info" style="pointer-events:none">Suiveur solaire hors mesure</span>
-      <button class="pill on-btn esp32-control" id="btnTrackerOn">☀ Tracker ON</button>
-      <button class="pill off-btn esp32-control" id="btnTrackerOff">Tracker OFF</button>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="pill info">LDR gauche: <b id="ldrL">—</b></span>
-      <span class="pill info">LDR droite: <b id="ldrR">—</b></span>
-      <span class="pill info">LDR haut: <b id="ldrH">—</b></span>
-      <span class="pill info">LDR bas: <b id="ldrB">—</b></span>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="pill info">RX / Azimut: <b id="servo1Live">—°</b></span>
-      <span class="pill info">RY / Élévation: <b id="servo2Live">—°</b></span>
-      <span class="pill info">Pendant mesure: <b>panneau bloqué</b></span>
-    </div>
-  </div>
-
-  <div class="card headerWide" id="scanDetailsCard">
-    <h3>Détails du scan</h3>
-
-    <div class="row">
-      <span class="pill info">Scan: <b id="histSelId">—</b></span>
-      <span class="pill info">Date: <b id="histSelTs">—</b></span>
-      <span class="pill info">Points: <b id="histSelPts">—</b></span>
-      <span class="pill info">Durée: <b id="histSelDur">—</b></span>
-    </div>
-
-    <div class="row">
-      <span class="pill info">Lux (min/avg/max): <b id="histLux">—</b></span>
-      <span class="pill info">Temp (min/avg/max): <b id="histTemp">—</b></span>
-      <span class="pill info">Hum (min/avg/max): <b id="histHum">—</b></span>
-      <span class="pill info">TC (min/avg/max): <b id="histTc">—</b></span>
-    </div>
-  </div>
-
-  <div class="row headerRep">
-    <span class="pill info" style="pointer-events:none">Repères</span>
-
-    <label class="badge"><input id="chkI0" type="checkbox"> Axe I = 0</label>
-    <label class="badge"><input id="chkU0" type="checkbox"> Axe U = 0</label>
-    <label class="badge"><input id="chkIsc" type="checkbox"> Isc</label>
-    <label class="badge"><input id="chkVoc" type="checkbox"> Voc</label>
-
-    <label class="badge">
-      <input id="chkUref" type="checkbox">
-      Uref =
-      <input id="uRefVal" type="number" step="0.001" style="width:90px"> V
-    </label>
-
-    <label class="badge">
-      <input id="chkIref" type="checkbox">
-      Iref =
-      <input id="iRefVal" type="number" step="0.000001" style="width:110px"> A
-    </label>
-  </div>
-</header>
-
-<div class="statusbar" id="statusbar">
-  <span>Seq <b id="seq">—</b></span>
-  <span>Horloge (ms) <b id="ts">—</b></span>
-  <span>Phase <b id="phase">—</b></span>
-  <span>Pattern <b id="line">—</b></span>
-  <span>Orientation <b id="orientModeBar">—</b></span>
 </div>
 
-<main>
-  <section class="card">
-    <h2>Mesures temps réel</h2>
 
-    <div class="legend">
-      <span>Lux</span><span>Temp DHT (°C)</span><span>Humidité (%)</span><span>TC (°C)</span>
-    </div>
 
-    <div class="chartBox tsBox">
-      <canvas id="chart"></canvas>
-    </div>
+<!-- =========================================================
+     OVERLAY MESURE
+     ========================================================= -->
 
-    <div class="row" style="margin-top:10px">
-      <label class="badge">
-        Fenêtre (pts)
-        <input id="winSize" type="number" min="20" max="2000" step="10" value="150" style="width:90px">
-      </label>
+<div
+  id="scanOverlay"
+  class="scanOverlay hidden"
+>
 
-      <label class="badge">
-        Défilement
-        <input id="chartScroll" type="range" min="0" max="0" value="0" style="width:260px">
-      </label>
-
-      <label class="badge">
-        <input id="autoFollow" type="checkbox" checked> Suivre en direct
-      </label>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Courbe I(U)</h2>
-
-    <div class="chartBox uiBox">
-      <canvas id="uiChart"></canvas>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="pill info">U (V): <b id="uEff">—</b></span>
-      <span class="pill info">I (A): <b id="iEff">—</b></span>
-      <span class="pill info">Points: <b id="uiCount">0</b></span>
-      <span class="pill info">k: <b id="stepCount">0</b></span>
-
-      <span class="pill info">Vmpp: <b id="vmpp">—</b></span>
-      <span class="pill info">Impp: <b id="impp">—</b></span>
-      <span class="pill info">Pmpp: <b id="pmpp">—</b></span>
-      <span class="pill info">Isc: <b id="iscVal">—</b></span>
-      <span class="pill info">Voc: <b id="vocVal">—</b></span>
-    </div>
-
-    <div class="row" style="margin-top:12px">
-      <button class="pill info" id="btnToggleHistory">Afficher historique</button>
-      <button class="pill info" id="btnDownloadAllMeasures">⬇ Export TOUTES les mesures (CSV)</button>
-      <button class="pill off-btn esp32-control" id="btnClearHistory">🗑 Vider historique</button>
-      <button class="pill off-btn" id="btnClearDisplay">🧹 Réinitialiser l’affichage</button>
-    </div>
-
-    <div class="card" id="historyCard" style="margin-top:12px">
-      <h3>Scans enregistrés</h3>
-      <div id="historyList" style="display:flex; flex-direction:column; gap:8px"></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Puissance & Tension</h2>
-
-    <div class="row" style="gap:16px">
-      <div class="chartBox uiBox" style="flex:1; min-width:280px">
-        <h3>P(U)</h3>
-        <canvas id="pChart"></canvas>
-      </div>
-
-      <div class="chartBox stepBox" style="flex:1; min-width:280px">
-        <h3>U (par mesure)</h3>
-        <canvas id="uChart"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Courant & Servos</h2>
-
-    <div class="row" style="gap:16px">
-      <div class="chartBox stepBox" style="flex:1; min-width:320px">
-        <h3>I (par mesure)</h3>
-        <canvas id="iChart"></canvas>
-      </div>
-
-      <div class="card" style="flex:1; min-width:320px">
-        <h3>Servos</h3>
-
-        <div class="row gauges">
-          <div class="servo">
-            <div class="gauge">
-              <svg viewBox="0 0 100 60">
-                <path class="gTrack" d="M10,50 A40,40 0 0 1 90,50"/>
-                <path class="gFill"  d="M10,50 A40,40 0 0 1 90,50"/>
-              </svg>
-              <div class="needle" id="needle1"></div>
-              <t id="servoTxt1">0°</t>
-            </div>
-            <div class="label">Servo 1 — RX / Azimut</div>
-            <input class="esp32-control" id="servo1Range" type="range" min="0" max="180" value="0">
-            <div class="pill info">Angle: <b id="servo1Val">0°</b></div>
-          </div>
-
-          <div class="servo">
-            <div class="gauge">
-              <svg viewBox="0 0 100 60">
-                <path class="gTrack" d="M10,50 A40,40 0 0 1 90,50"/>
-                <path class="gFill"  d="M10,50 A40,40 0 0 1 90,50"/>
-              </svg>
-              <div class="needle" id="needle2"></div>
-              <t id="servoTxt2">0°</t>
-            </div>
-            <div class="label">Servo 2 — RY / Élévation</div>
-            <input class="esp32-control" id="servo2Range" type="range" min="0" max="180" value="0">
-            <div class="pill info">Angle: <b id="servo2Val">0°</b></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
-
-<footer>
-  <span>© 2025 • ESP32 Dashboard</span>
-</footer>
-
-<div id="scanOverlay" class="scanOverlay hidden">
   <div class="scanBox">
-    <div class="scanSpinner"></div>
 
-    <h2>Mesure en cours</h2>
+    <div class="scanSpinner">
+    </div>
+
+
+    <h2 id="scanTitle">
+      Mesure I-V en cours
+    </h2>
+
 
     <div id="scanProgressTxt">
       Acquisition des données...
     </div>
 
+
     <div id="scanProgressBar">
-      <div id="scanProgressFill"></div>
+
+      <div id="scanProgressFill">
+      </div>
+
     </div>
+
 
     <div id="scanCount">
       Point 0 / 256
     </div>
+
   </div>
+
 </div>
-  
+
+
 </body>
+
 </html>
-
-
-
-
-
