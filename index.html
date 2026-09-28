@@ -16,14 +16,39 @@
     href="style.css"
   />
 
+
+  <!-- =======================================================
+       LEAFLET - CARTE GPS
+       ======================================================= -->
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+
+
+  <!-- =======================================================
+       CHART.JS
+       ======================================================= -->
+
   <script
     src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js">
   </script>
+
+
+  <!-- =======================================================
+       APPLICATION
+       ======================================================= -->
 
   <script
     src="app.js"
     defer>
   </script>
+
 </head>
 
 
@@ -127,6 +152,23 @@
       </button>
 
 
+      <!-- ===================================================
+           NOUVELLE PAGE GPS
+           =================================================== -->
+
+      <button
+        class="navItem"
+        type="button"
+        data-page="gps"
+      >
+        <span class="navIcon">⌖</span>
+
+        <span>
+          Localisation
+        </span>
+      </button>
+
+
       <button
         class="navItem"
         type="button"
@@ -168,8 +210,6 @@
     <div class="sidebarBottom">
 
 
-      <!-- Rôle actuellement connecté -->
-
       <div
         class="sidebarUserInfo"
         id="sidebarUserInfo"
@@ -193,8 +233,6 @@
       </div>
 
 
-      <!-- Connexion -->
-
       <a
         class="navItem"
         href="login.html"
@@ -208,8 +246,6 @@
       </a>
 
 
-      <!-- Inscription -->
-
       <a
         class="navItem"
         href="register.html"
@@ -222,8 +258,6 @@
         </span>
       </a>
 
-
-      <!-- Déconnexion -->
 
       <button
         class="navItem danger"
@@ -637,8 +671,6 @@
         <div class="overviewGrid">
 
 
-          <!-- Position -->
-
           <section class="card">
 
             <div class="sectionHeader">
@@ -690,8 +722,6 @@
           </section>
 
 
-
-          <!-- LDR -->
 
           <section class="card">
 
@@ -872,12 +902,6 @@
       >
 
 
-        <!-- =================================================
-             COMMANDES MESURE
-             USER = désactivées
-             MANAGER / ADMIN = autorisées
-             ================================================= -->
-
         <section class="card measurementControlCard">
 
           <div class="sectionHeader">
@@ -971,8 +995,6 @@
         <div class="chartGridTwo">
 
 
-          <!-- I(U) -->
-
           <section class="card chartCard">
 
             <div class="chartHeader">
@@ -1033,8 +1055,6 @@
 
 
 
-          <!-- P(U) -->
-
           <section class="card chartCard">
 
             <div class="chartHeader">
@@ -1074,8 +1094,6 @@
         <div class="chartGridTwo">
 
 
-          <!-- U par mesure -->
-
           <section class="card chartCard">
 
             <div class="chartHeader">
@@ -1105,8 +1123,6 @@
           </section>
 
 
-
-          <!-- I par mesure -->
 
           <section class="card chartCard">
 
@@ -1149,11 +1165,9 @@
           <div class="sectionHeader">
 
             <div>
-
               <h3>
                 Paramètres de la mesure
               </h3>
-
             </div>
 
           </div>
@@ -1161,55 +1175,44 @@
 
           <div class="measurementParameterGrid">
 
-
             <span class="badge">
-
               k :
               <b id="stepCount">
                 0
               </b>
-
             </span>
 
 
             <span class="badge">
-
               Seq :
               <b id="seq">
                 —
               </b>
-
             </span>
 
 
             <span class="badge">
-
               Temps :
               <b id="ts">
                 —
               </b>
               ms
-
             </span>
 
 
             <span class="badge">
-
               Pattern :
               <b id="line">
                 —
               </b>
-
             </span>
 
 
             <span class="badge">
-
               Orientation :
               <b id="orientModeBar">
                 —
               </b>
-
             </span>
 
           </div>
@@ -1227,18 +1230,15 @@
           <div class="sectionHeader">
 
             <div>
-
               <h3>
                 Repères des courbes
               </h3>
-
             </div>
 
           </div>
 
 
           <div class="referenceGrid">
-
 
             <label class="badge">
 
@@ -1334,9 +1334,7 @@
 
       </section>
 
-
-
-      <!-- ===================================================
+            <!-- ===================================================
            PAGE : CAPTEURS
            =================================================== -->
 
@@ -2040,6 +2038,507 @@
 
 
       <!-- ===================================================
+           PAGE : LOCALISATION GPS
+           =================================================== -->
+
+      <section
+        class="dashboardPage"
+        id="page-gps"
+        data-page-content="gps"
+      >
+
+
+        <!-- =================================================
+             TITRE
+             ================================================= -->
+
+        <div class="sectionTitle">
+
+          <div>
+
+            <h2>
+              Localisation du panneau solaire
+            </h2>
+
+            <p>
+              Position géographique fournie par le module GPS NEO-6M
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- =================================================
+             ETAT GPS + INFORMATIONS
+             ================================================= -->
+
+        <section class="card gpsStatusCard">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                État du GPS
+              </h3>
+
+              <p>
+                Informations de position reçues depuis l'ESP32
+              </p>
+
+            </div>
+
+
+            <div
+              class="gpsStateBadge waiting"
+              id="gpsStateBadge"
+            >
+
+              <span class="statusDot">
+              </span>
+
+              <span id="gpsStateText">
+                En attente du GPS
+              </span>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- ===============================================
+               INFORMATIONS PRINCIPALES
+               =============================================== -->
+
+          <div class="gpsInfoGrid">
+
+
+            <!-- LATITUDE -->
+
+            <div class="parameterCard">
+
+              <span>
+                Latitude
+              </span>
+
+              <strong id="gpsLatitude">
+                —
+              </strong>
+
+              <small>
+                degrés
+              </small>
+
+            </div>
+
+
+
+            <!-- LONGITUDE -->
+
+            <div class="parameterCard">
+
+              <span>
+                Longitude
+              </span>
+
+              <strong id="gpsLongitude">
+                —
+              </strong>
+
+              <small>
+                degrés
+              </small>
+
+            </div>
+
+
+
+            <!-- ALTITUDE -->
+
+            <div class="parameterCard">
+
+              <span>
+                Altitude
+              </span>
+
+              <strong id="gpsAltitude">
+                —
+              </strong>
+
+              <small>
+                m
+              </small>
+
+            </div>
+
+
+
+            <!-- SATELLITES -->
+
+            <div class="parameterCard">
+
+              <span>
+                Satellites
+              </span>
+
+              <strong id="gpsSatellites">
+                —
+              </strong>
+
+              <small>
+                satellites
+              </small>
+
+            </div>
+
+
+
+            <!-- HDOP -->
+
+            <div class="parameterCard">
+
+              <span>
+                Précision
+              </span>
+
+              <strong id="gpsHdop">
+                —
+              </strong>
+
+              <small>
+                HDOP
+              </small>
+
+            </div>
+
+
+
+            <!-- DERNIERE POSITION -->
+
+            <div class="parameterCard">
+
+              <span>
+                Dernière position
+              </span>
+
+              <strong id="gpsLastUpdate">
+                —
+              </strong>
+
+              <small>
+                dernière mise à jour
+              </small>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             CARTE GPS
+             ================================================= -->
+
+        <section class="card gpsMapCard">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Position sur la carte
+              </h3>
+
+              <p id="gpsMapDescription">
+                En attente d'une position valide du GPS
+              </p>
+
+            </div>
+
+
+            <button
+              class="pill info"
+              id="btnRefreshGps"
+              type="button"
+            >
+              ↻ Actualiser la position
+            </button>
+
+          </div>
+
+
+
+          <div class="gpsMapWrapper">
+
+
+            <!-- =============================================
+                 LEAFLET UTILISERA CE DIV
+                 ============================================= -->
+
+            <div
+              id="gpsMap"
+              class="gpsMap"
+            >
+            </div>
+
+
+
+            <!-- =============================================
+                 MESSAGE AVANT LE PREMIER FIX GPS
+                 ============================================= -->
+
+            <div
+              class="gpsMapWaiting"
+              id="gpsMapWaiting"
+            >
+
+              <div class="gpsWaitingIcon">
+                ⌖
+              </div>
+
+
+              <strong>
+                Position GPS indisponible
+              </strong>
+
+
+              <span>
+                Recherche d'une position valide...
+              </span>
+
+
+              <small>
+                La carte affichera automatiquement le panneau
+                dès que le module NEO-6M aura obtenu une position.
+              </small>
+
+            </div>
+
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             DETAILS GPS
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Informations de localisation
+              </h3>
+
+              <p>
+                Détails de la position du système photovoltaïque
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="gpsDetailsGrid">
+
+
+            <!-- ETAT -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                État GPS
+              </span>
+
+              <strong id="gpsFixStatus">
+                Recherche de position
+              </strong>
+
+            </div>
+
+
+
+            <!-- COORDONNEES -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                Coordonnées
+              </span>
+
+              <strong id="gpsCoordinates">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- ALTITUDE -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                Altitude
+              </span>
+
+              <strong id="gpsAltitudeDetail">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- SATELLITES -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                Satellites utilisés
+              </span>
+
+              <strong id="gpsSatellitesDetail">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- PRECISION -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                Précision HDOP
+              </span>
+
+              <strong id="gpsHdopDetail">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- DERNIERE RECEPTION -->
+
+            <div class="gpsDetailRow">
+
+              <span>
+                Dernière réception
+              </span>
+
+              <strong id="gpsLastReception">
+                —
+              </strong>
+
+            </div>
+
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             INFORMATIONS MODULE
+             ================================================= -->
+
+        <section class="card">
+
+          <div class="sectionHeader">
+
+            <div>
+
+              <h3>
+                Module GPS
+              </h3>
+
+              <p>
+                Équipement de géolocalisation installé sur le système
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="scanInfoGrid">
+
+
+            <div>
+
+              <span>
+                Module
+              </span>
+
+              <b>
+                NEO-6M
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Source
+              </span>
+
+              <b>
+                ESP32
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                État des données
+              </span>
+
+              <b id="gpsDataState">
+                En attente
+              </b>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Fix GPS
+              </span>
+
+              <b id="gpsFixType">
+                —
+              </b>
+
+            </div>
+
+
+          </div>
+
+        </section>
+
+
+      </section>
+
+            <!-- ===================================================
            PAGE : HISTORIQUE
            =================================================== -->
 
@@ -2133,6 +2632,10 @@
           </div>
 
 
+
+          <!-- =================================================
+               CONDITIONS ENVIRONNEMENTALES DU SCAN
+               ================================================= -->
 
           <div class="historySensorStats">
 
