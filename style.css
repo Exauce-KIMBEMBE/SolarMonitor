@@ -2019,3 +2019,2794 @@ input[type="radio"]{
   }
 
 }
+
+/* =========================================================
+   SolarMonitor — style.css
+   Nouvelle interface avec menu latéral
+   ========================================================= */
+
+:root{
+  --bg:#07111f;
+  --bg-soft:#0b1728;
+
+  --sidebar:#0b1730;
+  --sidebar-hover:#13264a;
+  --sidebar-active:#17386f;
+
+  --card:#0f1d33;
+  --card-2:#12243f;
+
+  --border:rgba(126,161,220,.16);
+
+  --ink:#edf4ff;
+  --muted:#8fa6c7;
+  --muted-2:#667f9f;
+
+  --blue:#4f8cff;
+  --blue-soft:#6ea8fe;
+
+  --green:#22c55e;
+  --green-soft:#86efac;
+
+  --red:#ef4444;
+  --orange:#f59e0b;
+  --yellow:#facc15;
+  --cyan:#22d3ee;
+  --violet:#a78bfa;
+
+  --sidebar-w:260px;
+  --topbar-h:76px;
+
+  --radius:18px;
+  --shadow:0 12px 32px rgba(0,0,0,.22);
+}
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  min-height:100%;
+}
+
+body{
+  margin:0;
+  min-height:100vh;
+
+  background:
+    radial-gradient(circle at top right, rgba(52,91,170,.10), transparent 35%),
+    var(--bg);
+
+  color:var(--ink);
+
+  font:
+    500 15px/1.5
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+button,
+input{
+  font:inherit;
+}
+
+button{
+  border:0;
+}
+
+a{
+  color:inherit;
+}
+
+h1,
+h2,
+h3,
+p{
+  margin-top:0;
+}
+
+h2{
+  margin-bottom:5px;
+}
+
+h3{
+  margin-bottom:5px;
+}
+
+p{
+  color:var(--muted);
+}
+
+
+/* =========================================================
+   APPLICATION
+   ========================================================= */
+
+.appShell{
+  width:100%;
+  min-height:100vh;
+
+  display:flex;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar{
+  position:fixed;
+
+  left:0;
+  top:0;
+  bottom:0;
+
+  width:var(--sidebar-w);
+
+  display:flex;
+  flex-direction:column;
+
+  background:
+    linear-gradient(
+      180deg,
+      #0d1d3b 0%,
+      #09152a 100%
+    );
+
+  border-right:1px solid var(--border);
+
+  padding:20px 14px;
+
+  z-index:1000;
+
+  transition:
+    width .25s ease,
+    transform .25s ease;
+
+  box-shadow:
+    12px 0 30px rgba(0,0,0,.16);
+}
+
+
+/* Marque */
+
+.sidebarBrand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+
+  padding:8px 10px 22px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
+
+.brandIcon{
+  flex:0 0 44px;
+
+  width:44px;
+  height:44px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border-radius:14px;
+
+  font-size:25px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fbbf24,
+      #f59e0b
+    );
+
+  color:#261800;
+
+  box-shadow:
+    0 8px 18px rgba(245,158,11,.20);
+}
+
+.brandText h1{
+  margin:0;
+
+  font-size:19px;
+  line-height:1.2;
+
+  color:#fff;
+}
+
+.brandText p{
+  margin:5px 0 0;
+
+  font-size:11px;
+  line-height:1.35;
+
+  color:#7890b2;
+}
+
+
+/* Navigation */
+
+.sidebarNav{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+
+  padding-top:22px;
+}
+
+.navItem{
+  width:100%;
+
+  display:flex;
+  align-items:center;
+  gap:12px;
+
+  min-height:48px;
+
+  padding:10px 13px;
+
+  border-radius:13px;
+
+  background:transparent;
+
+  color:#9cb0d1;
+
+  cursor:pointer;
+
+  text-decoration:none;
+
+  font-weight:650;
+
+  transition:
+    background .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+.navItem:hover{
+  background:var(--sidebar-hover);
+  color:#fff;
+}
+
+.navItem.active{
+  background:
+    linear-gradient(
+      135deg,
+      rgba(67,125,255,.24),
+      rgba(67,125,255,.12)
+    );
+
+  color:#fff;
+
+  box-shadow:
+    inset 3px 0 0 var(--blue);
+}
+
+.navIcon{
+  width:28px;
+
+  display:flex;
+  justify-content:center;
+
+  font-size:20px;
+}
+
+.sidebarBottom{
+  margin-top:auto;
+
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+
+  padding-top:18px;
+
+  border-top:
+    1px solid rgba(255,255,255,.06);
+}
+
+.navItem.danger{
+  color:#ff9a9a;
+}
+
+.sidebarVersion{
+  margin-top:14px;
+
+  padding:0 12px;
+
+  font-size:11px;
+
+  color:#506887;
+}
+
+
+/* =========================================================
+   ZONE PRINCIPALE
+   ========================================================= */
+
+.mainArea{
+  width:calc(100% - var(--sidebar-w));
+
+  min-height:100vh;
+
+  margin-left:var(--sidebar-w);
+
+  transition:
+    margin-left .25s ease,
+    width .25s ease;
+}
+
+
+/* =========================================================
+   TOPBAR
+   ========================================================= */
+
+.topbar{
+  min-height:var(--topbar-h);
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+
+  padding:14px 24px;
+
+  background:
+    rgba(8,18,33,.88);
+
+  backdrop-filter:blur(14px);
+
+  border-bottom:
+    1px solid var(--border);
+
+  position:sticky;
+
+  top:0;
+
+  z-index:500;
+}
+
+.topbarLeft{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.topbarLeft h2{
+  margin:0;
+
+  font-size:20px;
+
+  color:#fff;
+}
+
+.topbarLeft p{
+  margin:3px 0 0;
+
+  font-size:12px;
+
+  color:var(--muted);
+}
+
+.topbarRight{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.topStatus{
+  display:flex;
+  align-items:center;
+  gap:9px;
+
+  padding:9px 14px;
+
+  background:#0e1e36;
+
+  border:
+    1px solid var(--border);
+
+  border-radius:999px;
+
+  font-size:13px;
+
+  color:#b8c7de;
+}
+
+.statusDot{
+  width:9px;
+  height:9px;
+
+  border-radius:50%;
+
+  background:var(--red);
+
+  box-shadow:
+    0 0 10px rgba(239,68,68,.6);
+}
+
+.sidebarToggle{
+  display:none;
+
+  width:42px;
+  height:42px;
+
+  align-items:center;
+  justify-content:center;
+
+  border-radius:12px;
+
+  background:#132441;
+
+  color:#fff;
+
+  cursor:pointer;
+}
+
+
+/* =========================================================
+   STATUS GRID
+   ========================================================= */
+
+.systemStatusGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+
+  gap:14px;
+
+  padding:
+    20px 24px 0;
+}
+
+.statusCard{
+  min-height:105px;
+
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  padding:17px;
+
+  border-radius:var(--radius);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(19,37,65,.96),
+      rgba(11,25,45,.96)
+    );
+
+  border:1px solid var(--border);
+
+  box-shadow:var(--shadow);
+}
+
+.statusCardIcon{
+  width:44px;
+  height:44px;
+
+  flex:0 0 44px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border-radius:13px;
+
+  background:
+    rgba(79,140,255,.12);
+
+  color:var(--blue-soft);
+
+  font-size:21px;
+}
+
+.statusLabel{
+  display:block;
+
+  color:#8197b9;
+
+  font-size:12px;
+}
+
+.statusCard strong{
+  display:block;
+
+  margin-top:2px;
+
+  color:#fff;
+
+  font-size:17px;
+}
+
+.statusCard small{
+  display:block;
+
+  margin-top:4px;
+
+  color:#697f9e;
+
+  font-size:11px;
+}
+
+
+/* =========================================================
+   ESP32
+   ========================================================= */
+
+#esp32ConnectionCard{
+  margin:
+    14px 24px 0;
+}
+
+.esp32WarningCard{
+  padding:14px 18px;
+}
+
+.connectionDetails{
+  margin-top:8px;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.warningBox{
+  margin-top:12px;
+
+  padding:11px 13px;
+
+  border-radius:12px;
+
+  background:
+    rgba(239,68,68,.10);
+
+  border:
+    1px solid rgba(239,68,68,.22);
+
+  color:#ffabab;
+
+  font-size:13px;
+
+  font-weight:600;
+}
+
+
+/* =========================================================
+   CONTENU
+   ========================================================= */
+
+.dashboardContent{
+  width:100%;
+
+  padding:20px 24px 30px;
+}
+
+.dashboardPage{
+  display:none;
+}
+
+.dashboardPage.activePage{
+  display:block;
+
+  animation:
+    pageFade .20s ease;
+}
+
+@keyframes pageFade{
+  from{
+    opacity:0;
+    transform:translateY(6px);
+  }
+
+  to{
+    opacity:1;
+    transform:none;
+  }
+}
+
+
+/* =========================================================
+   CARDS
+   ========================================================= */
+
+.card{
+  width:100%;
+
+  padding:18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(15,29,51,.98),
+      rgba(11,24,43,.98)
+    );
+
+  border:
+    1px solid var(--border);
+
+  border-radius:var(--radius);
+
+  box-shadow:var(--shadow);
+}
+
+.sectionHeader,
+.chartHeader,
+.sensorChartHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+
+  margin-bottom:15px;
+}
+
+.sectionHeader h2,
+.sectionHeader h3,
+.chartHeader h3,
+.sensorChartHeader h3{
+  margin:0;
+
+  color:#f3f7ff;
+}
+
+.sectionHeader p,
+.chartHeader p,
+.sensorChartHeader p{
+  margin:4px 0 0;
+
+  font-size:12px;
+
+  color:var(--muted);
+}
+
+.sectionTitle{
+  margin-bottom:16px;
+}
+
+.sectionTitle h2{
+  margin:0;
+
+  color:#fff;
+}
+
+.sectionTitle p{
+  margin:5px 0 0;
+}
+
+
+/* =========================================================
+   BADGES / BUTTONS
+   ========================================================= */
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
+  min-height:38px;
+
+  padding:8px 12px;
+
+  border-radius:12px;
+
+  background:#132541;
+
+  border:
+    1px solid rgba(126,161,220,.18);
+
+  color:#d9e5f7;
+
+  font-size:13px;
+}
+
+.pill{
+  min-height:40px;
+
+  padding:9px 15px;
+
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+
+  border-radius:12px;
+
+  cursor:pointer;
+
+  color:#fff;
+
+  font-weight:700;
+
+  text-decoration:none;
+
+  position:relative;
+
+  overflow:hidden;
+
+  transition:
+    transform .15s ease,
+    filter .15s ease;
+}
+
+.pill:hover{
+  filter:brightness(1.08);
+  transform:translateY(-1px);
+}
+
+.pill:active{
+  transform:translateY(0);
+}
+
+.pill:disabled{
+  opacity:.42;
+
+  cursor:not-allowed;
+
+  transform:none;
+
+  filter:grayscale(.5);
+}
+
+.on-btn{
+  background:
+    linear-gradient(
+      135deg,
+      #17a964,
+      #22c55e
+    );
+}
+
+.off-btn{
+  background:
+    linear-gradient(
+      135deg,
+      #cc3440,
+      #ef4444
+    );
+}
+
+.info{
+  background:
+    linear-gradient(
+      135deg,
+      #315db0,
+      #437de0
+    );
+}
+
+.pill .ripple{
+  position:absolute;
+
+  border-radius:50%;
+
+  transform:scale(0);
+
+  animation:
+    ripple-anim 600ms linear;
+
+  background:
+    rgba(255,255,255,.4);
+
+  pointer-events:none;
+}
+
+@keyframes ripple-anim{
+  to{
+    transform:scale(4);
+    opacity:0;
+  }
+}
+
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+input[type="number"]{
+  min-height:38px;
+
+  padding:8px 10px;
+
+  border-radius:10px;
+
+  border:
+    1px solid rgba(126,161,220,.25);
+
+  background:#0b1930;
+
+  color:#fff;
+
+  outline:none;
+}
+
+input[type="number"]:focus{
+  border-color:var(--blue);
+}
+
+input[type="checkbox"],
+input[type="radio"]{
+  accent-color:var(--blue);
+}
+
+#periodMs{
+  width:180px;
+}
+
+
+/* =========================================================
+   VUE GENERALE
+   ========================================================= */
+
+.sensorSummaryGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+
+  gap:14px;
+
+  margin-bottom:16px;
+}
+
+.sensorSummaryCard{
+  min-height:112px;
+
+  display:flex;
+  align-items:center;
+  gap:15px;
+
+  padding:18px;
+
+  border-radius:var(--radius);
+
+  background:
+    linear-gradient(
+      145deg,
+      #10213b,
+      #0c1a30
+    );
+
+  border:1px solid var(--border);
+
+  box-shadow:var(--shadow);
+}
+
+.sensorIcon{
+  width:48px;
+  height:48px;
+
+  flex:0 0 48px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border-radius:14px;
+
+  font-size:22px;
+}
+
+.sensorSummaryCard span{
+  display:block;
+
+  color:#8094b2;
+
+  font-size:12px;
+}
+
+.sensorSummaryCard strong{
+  display:block;
+
+  margin-top:3px;
+
+  color:#fff;
+
+  font-size:22px;
+}
+
+.luxCard .sensorIcon{
+  color:#ffd95a;
+  background:rgba(250,204,21,.12);
+}
+
+.tempCard .sensorIcon{
+  color:#fb7185;
+  background:rgba(251,113,133,.12);
+}
+
+.humCard .sensorIcon{
+  color:#22d3ee;
+  background:rgba(34,211,238,.12);
+}
+
+.tcCard .sensorIcon{
+  color:#34d399;
+  background:rgba(52,211,153,.12);
+}
+
+.overviewGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:16px;
+
+  margin-bottom:16px;
+}
+
+.overviewServoValues{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,1fr);
+
+  gap:12px;
+}
+
+.overviewServo{
+  padding:16px;
+
+  border-radius:14px;
+
+  background:#0b1a30;
+
+  border:1px solid var(--border);
+}
+
+.overviewServo span{
+  display:block;
+
+  font-size:12px;
+
+  color:var(--muted);
+}
+
+.overviewServo strong{
+  display:block;
+
+  margin-top:4px;
+
+  font-size:25px;
+
+  color:#fff;
+}
+
+.ldrMiniGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,1fr);
+
+  gap:10px;
+}
+
+.ldrMiniGrid div{
+  display:flex;
+  justify-content:space-between;
+
+  padding:12px;
+
+  border-radius:12px;
+
+  background:#0b1a30;
+
+  color:var(--muted);
+
+  border:1px solid var(--border);
+}
+
+.ldrMiniGrid b{
+  color:#fff;
+}
+
+.mainParamsGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(5,minmax(0,1fr));
+
+  gap:12px;
+}
+
+.parameterCard{
+  padding:16px;
+
+  border-radius:14px;
+
+  background:#0b1a30;
+
+  border:1px solid var(--border);
+
+  text-align:center;
+}
+
+.parameterCard span{
+  display:block;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.parameterCard strong{
+  display:inline-block;
+
+  margin-top:5px;
+
+  font-size:22px;
+
+  color:#fff;
+}
+
+.parameterCard small{
+  margin-left:3px;
+
+  color:#7890b2;
+}
+
+
+/* =========================================================
+   MESURE I-V
+   ========================================================= */
+
+.measurementControlCard{
+  margin-bottom:16px;
+}
+
+.measurementButtons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.primaryMeasureButton{
+  flex-direction:column;
+
+  min-width:220px;
+
+  padding:13px 18px;
+}
+
+.primaryMeasureButton small{
+  font-size:10px;
+
+  opacity:.78;
+
+  font-weight:500;
+}
+
+.measurementSettings{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+
+  margin-top:14px;
+}
+
+.measurementSettings label{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.chartGridTwo{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:16px;
+
+  margin-bottom:16px;
+}
+
+.chartCard{
+  min-width:0;
+}
+
+.chartBox{
+  width:100%;
+
+  overflow:hidden;
+
+  border-radius:14px;
+
+  background:#09182c;
+
+  border:
+    1px solid rgba(126,161,220,.12);
+}
+
+.mainChartBox{
+  height:350px;
+}
+
+.stepBox{
+  height:320px;
+}
+
+.sensorChartBox{
+  height:280px;
+}
+
+.chartBox canvas{
+  width:100%!important;
+  height:100%!important;
+
+  display:block;
+
+  background:
+    linear-gradient(
+      180deg,
+      #0a1b32,
+      #09172a
+    );
+}
+
+.measurementValues{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+
+  margin-top:12px;
+}
+
+.measurementValues span{
+  padding:7px 10px;
+
+  border-radius:10px;
+
+  background:#0c1c33;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.measurementValues b{
+  color:#fff;
+}
+
+.measurementParameterGrid,
+.referenceGrid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.referenceGrid input[type="number"]{
+  width:92px;
+}
+
+
+/* =========================================================
+   CAPTEURS
+   ========================================================= */
+
+.sensorChartsGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:16px;
+
+  margin-bottom:16px;
+}
+
+.sensorChartHeader > div{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sensorDot{
+  width:11px;
+  height:11px;
+
+  display:block;
+
+  border-radius:50%;
+}
+
+.luxDot{
+  background:#facc15;
+  box-shadow:0 0 10px rgba(250,204,21,.6);
+}
+
+.tempDot{
+  background:#fb7185;
+  box-shadow:0 0 10px rgba(251,113,133,.5);
+}
+
+.humDot{
+  background:#22d3ee;
+  box-shadow:0 0 10px rgba(34,211,238,.5);
+}
+
+.tcDot{
+  background:#34d399;
+  box-shadow:0 0 10px rgba(52,211,153,.5);
+}
+
+.sensorNavigationControls{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+#chartScroll{
+  width:260px;
+}
+
+
+/* =========================================================
+   ORIENTATION
+   ========================================================= */
+
+.orientationSection{
+  padding:
+    20px 0;
+
+  border-top:
+    1px solid rgba(126,161,220,.09);
+}
+
+.orientationSection:first-of-type{
+  border-top:0;
+}
+
+.orientationSection h3{
+  margin:
+    0 0 12px;
+}
+
+.orientationModeGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+
+  gap:12px;
+}
+
+.orientationChoice{
+  min-height:94px;
+
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+
+  padding:15px;
+
+  border-radius:14px;
+
+  cursor:pointer;
+
+  background:#0b1a30;
+
+  border:
+    1px solid var(--border);
+
+  transition:
+    border .18s ease,
+    background .18s ease,
+    transform .18s ease;
+}
+
+.orientationChoice:hover{
+  transform:translateY(-1px);
+
+  background:#0f223e;
+
+  border-color:
+    rgba(79,140,255,.45);
+}
+
+.orientationChoice input{
+  margin-top:4px;
+}
+
+.orientationChoice strong{
+  display:block;
+
+  color:#fff;
+}
+
+.orientationChoice span{
+  display:block;
+
+  margin-top:4px;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.orientationActions,
+.trackerActions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+
+  margin-top:13px;
+}
+
+.ldrStatusGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+
+  gap:10px;
+}
+
+.ldrStatus{
+  padding:14px;
+
+  border-radius:13px;
+
+  text-align:center;
+
+  background:#0b1a30;
+
+  border:1px solid var(--border);
+}
+
+.ldrStatus span{
+  display:block;
+
+  color:var(--muted);
+
+  font-size:12px;
+}
+
+.ldrStatus b{
+  display:block;
+
+  margin-top:5px;
+
+  color:#fff;
+
+  font-size:18px;
+}
+
+
+/* =========================================================
+   SERVOS
+   ========================================================= */
+
+.gauges{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:20px;
+}
+
+.servo{
+  padding:20px;
+
+  border-radius:16px;
+
+  background:#0b1a30;
+
+  border:1px solid var(--border);
+
+  text-align:center;
+}
+
+.gauge{
+  position:relative;
+
+  width:180px;
+  height:125px;
+
+  margin:auto;
+}
+
+.gauge svg{
+  width:100%;
+}
+
+.gTrack{
+  fill:none;
+
+  stroke:#263e64;
+
+  stroke-width:9;
+
+  stroke-linecap:round;
+}
+
+.gFill{
+  --angle:0;
+
+  fill:none;
+
+  stroke:var(--green);
+
+  stroke-width:9;
+
+  stroke-linecap:round;
+
+  stroke-dasharray:180;
+
+  stroke-dashoffset:
+    calc(180 - var(--angle));
+
+  transition:
+    stroke-dashoffset .25s ease;
+}
+
+.needle{
+  position:absolute;
+
+  width:3px;
+  height:55px;
+
+  left:50%;
+  bottom:31px;
+
+  background:#fff;
+
+  transform-origin:
+    bottom center;
+
+  border-radius:5px;
+
+  transition:
+    transform .18s ease;
+}
+
+.gauge t{
+  position:absolute;
+
+  left:50%;
+  bottom:4px;
+
+  transform:
+    translateX(-50%);
+
+  font-size:18px;
+
+  font-weight:700;
+
+  color:#fff;
+}
+
+.servo .label{
+  margin:
+    5px 0 12px;
+
+  color:var(--muted);
+}
+
+.servo .label strong{
+  color:#fff;
+}
+
+#servo1Range,
+#servo2Range{
+  -webkit-appearance:none;
+  appearance:none;
+
+  width:80%;
+  height:7px;
+
+  border-radius:20px;
+
+  background:#243e65;
+
+  outline:none;
+
+  cursor:pointer;
+}
+
+#servo1Range::-webkit-slider-thumb,
+#servo2Range::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+
+  width:20px;
+  height:20px;
+
+  border-radius:50%;
+
+  background:var(--blue-soft);
+
+  border:3px solid #234d91;
+}
+
+#servo1Range::-moz-range-thumb,
+#servo2Range::-moz-range-thumb{
+  width:20px;
+  height:20px;
+
+  border-radius:50%;
+
+  background:var(--blue-soft);
+
+  border:3px solid #234d91;
+}
+
+.servoAngleBox{
+  width:max-content;
+
+  min-width:110px;
+
+  margin:12px auto 0;
+
+  padding:8px 12px;
+
+  border-radius:10px;
+
+  background:#112847;
+
+  color:var(--muted);
+}
+
+.servoAngleBox b{
+  color:#fff;
+}
+
+
+/* =========================================================
+   HISTORIQUE
+   ========================================================= */
+
+.scanInfoGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+
+  gap:10px;
+}
+
+.scanInfoGrid > div,
+.historySensorStats > div{
+  padding:13px;
+
+  border-radius:12px;
+
+  background:#0b1a30;
+
+  border:1px solid var(--border);
+}
+
+.scanInfoGrid span,
+.historySensorStats span{
+  display:block;
+
+  font-size:11px;
+
+  color:var(--muted);
+}
+
+.scanInfoGrid b,
+.historySensorStats b{
+  display:block;
+
+  margin-top:4px;
+
+  color:#fff;
+}
+
+.historySensorStats{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:10px;
+
+  margin-top:10px;
+}
+
+.historyActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.historyList,
+#historyList{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:9px;
+}
+
+.histItem{
+  user-select:none;
+
+  transition:
+    background .15s ease,
+    outline .15s ease;
+}
+
+.histItem:hover{
+  background:#132541;
+}
+
+.histItem.selected{
+  outline:
+    2px solid rgba(79,140,255,.75);
+
+  box-shadow:
+    0 0 0 4px rgba(79,140,255,.10);
+}
+
+
+/* =========================================================
+   ESP32
+   ========================================================= */
+
+.connected{
+  color:#8ff0b4!important;
+}
+
+.disconnected{
+  color:#ff9898!important;
+}
+
+.esp32-control:disabled{
+  opacity:.42;
+
+  cursor:not-allowed;
+
+  pointer-events:none;
+
+  filter:grayscale(.5);
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.appFooter{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+
+  padding:
+    18px 24px;
+
+  border-top:
+    1px solid var(--border);
+
+  color:#627b9c;
+
+  font-size:11px;
+}
+
+
+/* =========================================================
+   SCAN OVERLAY
+   ========================================================= */
+
+.scanOverlay{
+  position:fixed;
+
+  inset:0;
+
+  z-index:99999;
+
+  display:flex;
+
+  align-items:center;
+  justify-content:center;
+
+  padding:20px;
+
+  background:
+    rgba(3,9,18,.82);
+
+  backdrop-filter:
+    blur(8px);
+}
+
+.scanOverlay.hidden{
+  display:none;
+}
+
+.scanBox{
+  width:440px;
+  max-width:100%;
+
+  padding:32px;
+
+  border-radius:22px;
+
+  text-align:center;
+
+  background:
+    linear-gradient(
+      145deg,
+      #11274a,
+      #0a1b34
+    );
+
+  border:
+    1px solid rgba(79,140,255,.55);
+
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.55),
+    0 0 40px rgba(79,140,255,.16);
+}
+
+.scanSpinner{
+  width:74px;
+  height:74px;
+
+  margin:
+    0 auto 20px;
+
+  border:
+    7px solid rgba(255,255,255,.10);
+
+  border-top-color:
+    var(--green);
+
+  border-radius:50%;
+
+  animation:
+    scanSpin .9s linear infinite;
+}
+
+@keyframes scanSpin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+#scanTitle{
+  margin-bottom:8px;
+
+  color:#fff;
+}
+
+#scanProgressTxt{
+  color:#9eb2cf;
+}
+
+#scanProgressBar{
+  height:13px;
+
+  margin-top:22px;
+
+  overflow:hidden;
+
+  border-radius:20px;
+
+  background:#071427;
+}
+
+#scanProgressFill{
+  width:0%;
+  height:100%;
+
+  border-radius:20px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--green),
+      #6ee7b7
+    );
+
+  transition:
+    width .20s ease;
+}
+
+#scanCount{
+  margin-top:12px;
+
+  color:#dce7f8;
+
+  font-weight:700;
+}
+
+
+/* =========================================================
+   AUTH
+   ========================================================= */
+
+.auth-page{
+  min-height:100vh;
+
+  display:flex;
+
+  align-items:center;
+  justify-content:center;
+
+  padding:20px;
+}
+
+.auth-card{
+  width:100%;
+  max-width:450px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:15px;
+}
+
+.auth-card form{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:15px;
+}
+
+.auth-card input{
+  min-height:44px;
+
+  padding:10px 12px;
+
+  border-radius:11px;
+
+  border:
+    1px solid var(--border);
+
+  background:#0a1930;
+
+  color:#fff;
+}
+
+.muted{
+  color:var(--muted);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:1200px){
+
+  .systemStatusGrid,
+  .sensorSummaryGrid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .mainParamsGrid{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+  }
+
+  .orientationModeGrid{
+    grid-template-columns:
+      1fr;
+  }
+
+}
+
+
+@media(max-width:950px){
+
+  .sidebar{
+    transform:
+      translateX(-100%);
+
+    box-shadow:
+      12px 0 35px rgba(0,0,0,.45);
+  }
+
+  body.sidebar-open .sidebar{
+    transform:
+      translateX(0);
+  }
+
+  .mainArea{
+    width:100%;
+
+    margin-left:0;
+  }
+
+  .sidebarToggle{
+    display:flex;
+  }
+
+  .chartGridTwo,
+  .sensorChartsGrid,
+  .overviewGrid{
+    grid-template-columns:
+      1fr;
+  }
+
+  .gauges{
+    grid-template-columns:
+      1fr;
+  }
+
+}
+
+
+@media(max-width:680px){
+
+  .topbar{
+    padding:
+      12px 14px;
+  }
+
+  .topbarRight{
+    display:none;
+  }
+
+  .systemStatusGrid{
+    grid-template-columns:
+      1fr;
+
+    padding:
+      14px 14px 0;
+  }
+
+  #esp32ConnectionCard{
+    margin:
+      12px 14px 0;
+  }
+
+  .dashboardContent{
+    padding:
+      14px;
+  }
+
+  .sensorSummaryGrid{
+    grid-template-columns:
+      1fr;
+  }
+
+  .mainParamsGrid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .ldrStatusGrid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .scanInfoGrid,
+  .historySensorStats{
+    grid-template-columns:
+      1fr;
+  }
+
+  .measurementButtons{
+    flex-direction:column;
+  }
+
+  .measurementButtons .pill{
+    width:100%;
+  }
+
+  .measurementSettings{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  #periodMs{
+    width:100%;
+  }
+
+  .sensorNavigationControls{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  #chartScroll{
+    width:100%;
+  }
+
+  .appFooter{
+    flex-direction:column;
+
+    text-align:center;
+  }
+
+  .mainChartBox,
+  .stepBox,
+  .sensorChartBox{
+    height:280px;
+  }
+
+}
+
+/* =========================================================
+   SOLARMONITOR — PAGE LOCALISATION GPS
+   À ajouter à la fin de style.css
+   ========================================================= */
+
+
+/* =========================================================
+   PAGE GPS
+   ========================================================= */
+
+#page-gps{
+  width:100%;
+}
+
+
+/* =========================================================
+   CARTES GPS
+   ========================================================= */
+
+#page-gps .card{
+  min-width:0;
+}
+
+
+/* =========================================================
+   ETAT GPS
+   ========================================================= */
+
+#gpsStateBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  min-width:90px;
+  min-height:30px;
+
+  padding:5px 12px;
+
+  border-radius:999px;
+
+  border:
+    1px solid rgba(245,158,11,.28);
+
+  background:
+    rgba(245,158,11,.12);
+
+  color:
+    var(--orange);
+
+  font-size:12px;
+  font-weight:800;
+
+  letter-spacing:.02em;
+
+  white-space:nowrap;
+
+  transition:
+    background .2s ease,
+    border-color .2s ease,
+    color .2s ease,
+    box-shadow .2s ease;
+}
+
+
+/* GPS valide */
+
+#gpsStateBadge.ok,
+#gpsStateBadge.connected,
+#gpsStateBadge.valid{
+
+  background:
+    rgba(34,197,94,.12);
+
+  border-color:
+    rgba(34,197,94,.30);
+
+  color:
+    var(--green);
+
+  box-shadow:
+    0 0 0 1px rgba(34,197,94,.04);
+}
+
+
+/* GPS en attente */
+
+#gpsStateBadge.waiting,
+#gpsStateBadge.pending{
+
+  background:
+    rgba(245,158,11,.12);
+
+  border-color:
+    rgba(245,158,11,.28);
+
+  color:
+    var(--orange);
+}
+
+
+/* GPS indisponible */
+
+#gpsStateBadge.error,
+#gpsStateBadge.offline,
+#gpsStateBadge.invalid{
+
+  background:
+    rgba(239,68,68,.12);
+
+  border-color:
+    rgba(239,68,68,.28);
+
+  color:
+    var(--red);
+}
+
+
+#gpsStateText{
+  margin:0;
+
+  color:
+    var(--muted);
+
+  line-height:1.5;
+}
+
+
+/* =========================================================
+   VALEURS GPS
+   ========================================================= */
+
+#gpsLatitude,
+#gpsLongitude,
+#gpsAltitude,
+#gpsSatellites,
+#gpsHdop,
+#gpsLastUpdate{
+
+  font-variant-numeric:
+    tabular-nums;
+}
+
+
+/* Latitude / Longitude mises en évidence */
+
+#gpsLatitude,
+#gpsLongitude{
+
+  color:
+    var(--blue-soft);
+
+  font-weight:800;
+}
+
+
+/* Satellites */
+
+#gpsSatellites{
+
+  color:
+    var(--cyan);
+
+  font-weight:800;
+}
+
+
+/* =========================================================
+   CONTENEUR CARTE
+   ========================================================= */
+
+#gpsMap{
+
+  position:relative;
+
+  width:100%;
+
+  height:480px;
+
+  min-height:380px;
+
+  overflow:hidden;
+
+  border-radius:
+    calc(var(--radius) - 4px);
+
+  border:
+    1px solid var(--border);
+
+  background:
+    var(--bg-soft);
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.015);
+
+  z-index:1;
+}
+
+
+/* =========================================================
+   LEAFLET
+   ========================================================= */
+
+#gpsMap.leaflet-container{
+
+  width:100%;
+
+  height:480px;
+
+  min-height:380px;
+
+  background:
+    #0b1728;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+
+/* Empêche Leaflet de passer devant le menu latéral */
+
+#gpsMap .leaflet-pane{
+  z-index:1;
+}
+
+
+#gpsMap .leaflet-top,
+#gpsMap .leaflet-bottom{
+  z-index:10;
+}
+
+
+/* =========================================================
+   BOUTONS LEAFLET + / -
+   ========================================================= */
+
+#gpsMap .leaflet-control-zoom{
+
+  overflow:hidden;
+
+  border:
+    1px solid rgba(126,161,220,.22);
+
+  border-radius:10px;
+
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.25);
+}
+
+
+#gpsMap .leaflet-control-zoom a{
+
+  width:34px;
+
+  height:34px;
+
+  line-height:34px;
+
+  background:
+    #0f1d33;
+
+  color:
+    var(--ink);
+
+  border-color:
+    rgba(126,161,220,.15);
+
+  transition:
+    background .2s ease,
+    color .2s ease;
+}
+
+
+#gpsMap .leaflet-control-zoom a:hover{
+
+  background:
+    #17386f;
+
+  color:
+    #ffffff;
+}
+
+
+/* =========================================================
+   ATTRIBUTION OPENSTREETMAP
+   ========================================================= */
+
+#gpsMap .leaflet-control-attribution{
+
+  padding:3px 7px;
+
+  background:
+    rgba(7,17,31,.82);
+
+  color:
+    var(--muted);
+
+  font-size:10px;
+
+  border-radius:
+    8px 0 0 0;
+
+  backdrop-filter:
+    blur(8px);
+}
+
+
+#gpsMap .leaflet-control-attribution a{
+
+  color:
+    var(--blue-soft);
+}
+
+
+/* =========================================================
+   POPUP GPS
+   ========================================================= */
+
+#gpsMap .leaflet-popup-content-wrapper{
+
+  background:
+    var(--card);
+
+  color:
+    var(--ink);
+
+  border:
+    1px solid var(--border);
+
+  border-radius:12px;
+
+  box-shadow:
+    var(--shadow);
+}
+
+
+#gpsMap .leaflet-popup-tip{
+
+  background:
+    var(--card);
+}
+
+
+#gpsMap .leaflet-popup-content{
+
+  margin:12px 14px;
+
+  font-size:13px;
+
+  line-height:1.5;
+}
+
+
+/* =========================================================
+   MESSAGE "EN ATTENTE DU GPS"
+   ========================================================= */
+
+#gpsMapWaiting{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  gap:10px;
+
+  width:100%;
+
+  min-height:46px;
+
+  margin-top:12px;
+
+  padding:10px 14px;
+
+  border:
+    1px dashed rgba(245,158,11,.30);
+
+  border-radius:12px;
+
+  background:
+    rgba(245,158,11,.07);
+
+  color:
+    var(--orange);
+
+  font-size:13px;
+
+  font-weight:700;
+
+  text-align:center;
+}
+
+
+/* Petit indicateur animé */
+
+#gpsMapWaiting::before{
+
+  content:"";
+
+  flex:0 0 auto;
+
+  width:9px;
+
+  height:9px;
+
+  border-radius:50%;
+
+  background:
+    var(--orange);
+
+  box-shadow:
+    0 0 0 0 rgba(245,158,11,.45);
+
+  animation:
+    gpsWaitingPulse 1.7s infinite;
+}
+
+
+@keyframes gpsWaitingPulse{
+
+  0%{
+    box-shadow:
+      0 0 0 0 rgba(245,158,11,.42);
+  }
+
+  70%{
+    box-shadow:
+      0 0 0 9px rgba(245,158,11,0);
+  }
+
+  100%{
+    box-shadow:
+      0 0 0 0 rgba(245,158,11,0);
+  }
+}
+
+
+/* =========================================================
+   DESCRIPTION CARTE
+   ========================================================= */
+
+#gpsMapDescription{
+
+  color:
+    var(--muted);
+
+  line-height:1.5;
+}
+
+
+/* =========================================================
+   BOUTON ACTUALISER GPS
+   ========================================================= */
+
+#btnRefreshGps{
+
+  display:inline-flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  gap:8px;
+
+  min-height:40px;
+
+  padding:
+    9px 16px;
+
+  border-radius:11px;
+
+  border:
+    1px solid rgba(79,140,255,.28);
+
+  background:
+    rgba(79,140,255,.12);
+
+  color:
+    var(--blue-soft);
+
+  font-weight:800;
+
+  cursor:pointer;
+
+  transition:
+    transform .16s ease,
+    background .16s ease,
+    border-color .16s ease,
+    box-shadow .16s ease;
+}
+
+
+#btnRefreshGps:hover{
+
+  background:
+    rgba(79,140,255,.20);
+
+  border-color:
+    rgba(79,140,255,.45);
+
+  box-shadow:
+    0 8px 22px rgba(0,0,0,.18);
+
+  transform:
+    translateY(-1px);
+}
+
+
+#btnRefreshGps:active{
+
+  transform:
+    translateY(0);
+}
+
+
+#btnRefreshGps:disabled{
+
+  opacity:.45;
+
+  cursor:not-allowed;
+
+  transform:none;
+
+  box-shadow:none;
+}
+
+
+/* =========================================================
+   DETAILS GPS
+   ========================================================= */
+
+#gpsFixStatus,
+#gpsCoordinates,
+#gpsAltitudeDetail,
+#gpsSatellitesDetail,
+#gpsHdopDetail,
+#gpsLastReception,
+#gpsDataState,
+#gpsFixType{
+
+  font-variant-numeric:
+    tabular-nums;
+}
+
+
+/* Coordonnées détaillées */
+
+#gpsCoordinates{
+
+  color:
+    var(--blue-soft);
+
+  font-weight:700;
+
+  word-break:
+    break-word;
+}
+
+
+/* =========================================================
+   VALEURS IMPORTANTES
+   ========================================================= */
+
+#gpsFixStatus,
+#gpsDataState{
+
+  font-weight:800;
+}
+
+
+#gpsSatellitesDetail{
+
+  color:
+    var(--cyan);
+
+  font-weight:800;
+}
+
+
+/* =========================================================
+   MEILLEURE INTEGRATION VISUELLE DE LA CARTE
+   ========================================================= */
+
+#page-gps .leaflet-marker-icon{
+
+  filter:
+    drop-shadow(
+      0 4px 7px rgba(0,0,0,.45)
+    );
+}
+
+
+/* Cercle approximatif HDOP */
+
+#page-gps .leaflet-interactive{
+
+  transition:
+    opacity .2s ease;
+}
+
+
+/* =========================================================
+   MODE CHARGEMENT GPS
+   ========================================================= */
+
+#page-gps.gps-loading #btnRefreshGps{
+
+  pointer-events:none;
+
+  opacity:.65;
+}
+
+
+/* =========================================================
+   TABLETTE
+   ========================================================= */
+
+@media (max-width:1100px){
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+
+    height:430px;
+
+    min-height:360px;
+  }
+
+}
+
+
+/* =========================================================
+   TABLETTE / PETIT ECRAN
+   ========================================================= */
+
+@media (max-width:820px){
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+
+    height:400px;
+
+    min-height:340px;
+
+    border-radius:14px;
+  }
+
+
+  #btnRefreshGps{
+
+    min-height:42px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width:600px){
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+
+    height:360px;
+
+    min-height:320px;
+
+    border-radius:12px;
+  }
+
+
+  #gpsMapWaiting{
+
+    min-height:44px;
+
+    padding:9px 11px;
+
+    font-size:12px;
+  }
+
+
+  #btnRefreshGps{
+
+    width:100%;
+
+    min-height:44px;
+  }
+
+
+  #gpsLatitude,
+  #gpsLongitude{
+
+    font-size:
+      clamp(
+        14px,
+        4vw,
+        18px
+      );
+
+    word-break:
+      break-word;
+  }
+
+
+  #gpsMap .leaflet-control-attribution{
+
+    max-width:80%;
+
+    font-size:9px;
+  }
+
+}
+
+
+/* =========================================================
+   TRES PETIT MOBILE
+   ========================================================= */
+
+@media (max-width:380px){
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+
+    height:320px;
+
+    min-height:290px;
+  }
+
+
+  #gpsStateBadge{
+
+    min-width:80px;
+
+    padding:
+      4px 9px;
+
+    font-size:11px;
+  }
+
+}
+
+
+/* =========================================================
+   ACCESSIBILITE / REDUCTION DES ANIMATIONS
+   ========================================================= */
+
+@media (prefers-reduced-motion:reduce){
+
+  #gpsMapWaiting::before{
+
+    animation:none;
+  }
+
+
+  #btnRefreshGps,
+  #gpsStateBadge{
+
+    transition:none;
+  }
+
+}
