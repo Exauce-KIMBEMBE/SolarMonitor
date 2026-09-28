@@ -43,6 +43,17 @@ const pool = mysql.createPool({
 
 /* =========================================================
    CREATION TABLES MESURES
+
+   IMPORTANT :
+   On conserve seulement :
+
+   - measurements
+   - measurement_points
+
+   measurement_points contient les points finaux de la
+   courbe I-V envoyée par le système.
+
+   Les échantillons bruts ne sont plus enregistrés.
    ========================================================= */
 
 async function ensureMeasurementTables() {
@@ -75,7 +86,6 @@ async function ensureMeasurementTables() {
       tc_avg DOUBLE DEFAULT NULL,
 
       points_count INT NOT NULL DEFAULT 0,
-      samples_count INT NOT NULL DEFAULT 0,
 
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -122,51 +132,21 @@ async function ensureMeasurementTables() {
   `);
 
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS measurement_samples (
+  /*
+    Anciennes versions de SolarMonitor possédaient
+    une colonne samples_count.
 
-      id BIGINT NOT NULL AUTO_INCREMENT,
+    On ne la supprime pas automatiquement afin de ne pas
+    casser une base de données déjà déployée.
 
-      measurement_id INT NOT NULL,
+    Elle n'est simplement plus utilisée pour les nouvelles
+    mesures.
+  */
 
-      k INT DEFAULT NULL,
 
-      seq INT DEFAULT NULL,
-
-      ts_ms BIGINT DEFAULT NULL,
-
-      line_no INT DEFAULT NULL,
-
-      u_v DOUBLE DEFAULT NULL,
-      i_a DOUBLE DEFAULT NULL,
-
-      lux DOUBLE DEFAULT NULL,
-
-      temp_dht_c DOUBLE DEFAULT NULL,
-      hum_dht DOUBLE DEFAULT NULL,
-      tc_c DOUBLE DEFAULT NULL,
-
-      servo1_deg DOUBLE DEFAULT NULL,
-      servo2_deg DOUBLE DEFAULT NULL,
-
-      orient_mode VARCHAR(50) DEFAULT NULL,
-
-      PRIMARY KEY (id),
-
-      INDEX idx_measurement_samples_measurement
-        (measurement_id),
-
-      CONSTRAINT fk_measurement_samples_measurement
-        FOREIGN KEY (measurement_id)
-        REFERENCES measurements(id)
-        ON DELETE CASCADE
-
-    ) ENGINE=InnoDB
-      DEFAULT CHARSET=utf8mb4
-      COLLATE=utf8mb4_unicode_ci
-  `);
-
-  console.log("Tables mesures vérifiées/créées.");
+  console.log(
+    "Tables mesures vérifiées/créées."
+  );
 }
 
 
@@ -200,6 +180,7 @@ function authRequired(req, res, next) {
   const authHeader =
     req.headers.authorization || "";
 
+
   const token =
     authHeader.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -221,6 +202,7 @@ function authRequired(req, res, next) {
         token,
         process.env.JWT_SECRET
       );
+
 
     next();
 
@@ -251,13 +233,17 @@ function managerRequired(req, res, next) {
 
   if (
     !req.user ||
-    !["manager", "admin"].includes(req.user.role)
+    !["manager", "admin"].includes(
+      req.user.role
+    )
   ) {
 
     return res.status(403).json({
-      error: "Accès réservé au manager/admin"
+      error:
+        "Accès réservé au manager/admin"
     });
   }
+
 
   next();
 }
@@ -277,9 +263,11 @@ function adminRequired(req, res, next) {
   ) {
 
     return res.status(403).json({
-      error: "Accès réservé à l'administrateur"
+      error:
+        "Accès réservé à l'administrateur"
     });
   }
+
 
   next();
 }
@@ -290,320 +278,803 @@ function adminRequired(req, res, next) {
    ========================================================= */
 
 let currentCommand = {
+
   cmd: "none",
+
   mode: "manual",
+
   angleX: 0,
+
   angleY: 0,
+
   tracking: false
 };
 
 
+/*
+  Dernier message temps réel reçu.
+
+  On garde ce comportement pour conserver la compatibilité
+  avec ton app.js existant.
+*/
+
 let solarData = {};
 
 
+/* =========================================================
+   GPS
+
+   La position GPS est conservée séparément.
+
+   C'est volontaire :
+   un message suivant contenant seulement Lux / DHT /
+   thermocouple / scan I-V ne doit PAS effacer la dernière
+   position GPS connue.
+   ========================================================= */
+
+let gpsData = {
+
+  gps_valid: false,
+
+  gps_lat: null,
+
+  gps_lon: null,
+
+  gps_alt: null,
+
+  gps_satellites: null,
+
+  gps_hdop: null,
+
+  gps_updated_at: null
+
+};
+
+
+/* =========================================================
+   STATUT ESP32
+   ========================================================= */
+
 let esp32Status = {
+
   connected: false,
+
   lastSeen: null,
+
   ip: null,
+
   heap: null
 };
+
+
+/* =========================================================
+   OUTILS GPS
+   ========================================================= */
+
+
+/*
+  Convertit une valeur en nombre.
+
+  Si la valeur reçue n'est pas exploitable,
+  retourne null.
+*/
+
+function gpsNumber(value) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+
+    return null;
+  }
+
+
+  const n =
+    Number(value);
+
+
+  return Number.isFinite(n)
+    ? n
+    : null;
+}
+
+
+/* =========================================================
+   VALIDATION COORDONNEES GPS
+   ========================================================= */
+
+function validGpsCoordinates(
+  latitude,
+  longitude
+) {
+
+  const lat =
+    gpsNumber(latitude);
+
+  const lon =
+    gpsNumber(longitude);
+
+
+  if (
+    lat === null ||
+    lon === null
+  ) {
+
+    return false;
+  }
+
+
+  if (
+    lat < -90 ||
+    lat > 90
+  ) {
+
+    return false;
+  }
+
+
+  if (
+    lon < -180 ||
+    lon > 180
+  ) {
+
+    return false;
+  }
+
+
+  /*
+    Un NEO-6M peut fournir 0 / 0 avant le premier fix.
+
+    On ne considère donc pas 0 / 0 comme la position
+    valide du panneau.
+  */
+
+  if (
+    lat === 0 &&
+    lon === 0
+  ) {
+
+    return false;
+  }
+
+
+  return true;
+}
+
+
+/* =========================================================
+   CONVERSION BOOLEAN GPS
+   ========================================================= */
+
+function gpsBoolean(value) {
+
+  return (
+    value === true ||
+    value === 1 ||
+    value === "1" ||
+    value === "true"
+  );
+}
+
+
+/* =========================================================
+   EXTRACTION GPS DEPUIS UN MESSAGE ESP32
+   ========================================================= */
+
+function extractGpsFromBody(body) {
+
+  if (
+    !body ||
+    typeof body !== "object"
+  ) {
+
+    return null;
+  }
+
+
+  /*
+    Format principal prévu côté ESP32 :
+
+      gps_valid
+      gps_lat
+      gps_lon
+      gps_alt
+      gps_satellites
+      gps_hdop
+
+    On accepte également un objet "gps" afin de garder
+    le serveur tolérant.
+  */
+
+
+  const nestedGps =
+    (
+      body.gps &&
+      typeof body.gps === "object"
+    )
+      ? body.gps
+      : {};
+
+
+  const latitude =
+    body.gps_lat ??
+    nestedGps.lat ??
+    nestedGps.latitude;
+
+
+  const longitude =
+    body.gps_lon ??
+    nestedGps.lon ??
+    nestedGps.lng ??
+    nestedGps.longitude;
+
+
+  const altitude =
+    body.gps_alt ??
+    nestedGps.alt ??
+    nestedGps.altitude;
+
+
+  const satellites =
+    body.gps_satellites ??
+    nestedGps.satellites;
+
+
+  const hdop =
+    body.gps_hdop ??
+    nestedGps.hdop;
+
+
+  const explicitValid =
+    body.gps_valid ??
+    nestedGps.valid;
+
+
+  /*
+    Détermine si le message contient réellement
+    quelque chose concernant le GPS.
+  */
+
+  const containsGps =
+    latitude !== undefined ||
+    longitude !== undefined ||
+    altitude !== undefined ||
+    satellites !== undefined ||
+    hdop !== undefined ||
+    explicitValid !== undefined;
+
+
+  if (!containsGps) {
+
+    return null;
+  }
+
+
+  const coordinateValid =
+    validGpsCoordinates(
+      latitude,
+      longitude
+    );
+
+
+  /*
+    Si gps_valid est fourni par l'ESP32,
+    on exige à la fois :
+
+      - gps_valid = true
+      - coordonnées valides
+
+    Sinon les coordonnées elles-mêmes déterminent
+    la validité.
+  */
+
+  const valid =
+    explicitValid === undefined
+      ? coordinateValid
+      : (
+          gpsBoolean(
+            explicitValid
+          ) &&
+          coordinateValid
+        );
+
+
+  return {
+
+    gps_valid:
+      valid,
+
+    gps_lat:
+      coordinateValid
+        ? gpsNumber(latitude)
+        : null,
+
+    gps_lon:
+      coordinateValid
+        ? gpsNumber(longitude)
+        : null,
+
+    gps_alt:
+      gpsNumber(altitude),
+
+    gps_satellites:
+      gpsNumber(satellites),
+
+    gps_hdop:
+      gpsNumber(hdop),
+
+    gps_updated_at:
+      new Date().toISOString()
+  };
+}
+
+
+/* =========================================================
+   MISE A JOUR GPS
+   ========================================================= */
+
+function updateGpsData(body) {
+
+  const incomingGps =
+    extractGpsFromBody(body);
+
+
+  /*
+    Le message ne contient aucune information GPS.
+
+    On conserve donc exactement la dernière position connue.
+  */
+
+  if (!incomingGps) {
+
+    return;
+  }
+
+
+  /*
+    Si une nouvelle position est valide,
+    on remplace les coordonnées.
+  */
+
+  if (incomingGps.gps_valid) {
+
+    gpsData = {
+      ...gpsData,
+      ...incomingGps
+    };
+
+    return;
+  }
+
+
+  /*
+    Pas de nouveau fix.
+
+    On garde latitude/longitude de la dernière position
+    valide mais on met gps_valid à false.
+
+    Cela permet au site de savoir que le module cherche
+    actuellement les satellites sans perdre la dernière
+    position connue côté serveur.
+  */
+
+  gpsData = {
+
+    ...gpsData,
+
+    gps_valid: false,
+
+    gps_alt:
+      incomingGps.gps_alt ??
+      gpsData.gps_alt,
+
+    gps_satellites:
+      incomingGps.gps_satellites ??
+      gpsData.gps_satellites,
+
+    gps_hdop:
+      incomingGps.gps_hdop ??
+      gpsData.gps_hdop,
+
+    gps_updated_at:
+      incomingGps.gps_updated_at
+  };
+}
 
 
 /* =========================================================
    ACCUEIL
    ========================================================= */
 
-app.get("/", (req, res) => {
+app.get(
+  "/",
+  (req, res) => {
 
-  res.json({
-    status: true,
-    project: "SolarMonitor",
-    message: "Serveur SolarMonitor actif"
-  });
-});
+    res.json({
+
+      status: true,
+
+      project:
+        "SolarMonitor",
+
+      message:
+        "Serveur SolarMonitor actif"
+
+    });
+  }
+);
 
 
 /* =========================================================
    HEALTH MYSQL
    ========================================================= */
 
-app.get("/api/health", async (req, res) => {
+app.get(
+  "/api/health",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const [rows] =
-      await pool.query(`
-        SELECT
-          DATABASE() AS db,
-          NOW() AS serverTime
-      `);
+      const [rows] =
+        await pool.query(`
+          SELECT
+            DATABASE() AS db,
+            NOW() AS serverTime
+        `);
 
-    res.json({
-      ok: true,
-      database: rows[0]
-    });
 
+      res.json({
+
+        ok: true,
+
+        database:
+          rows[0]
+
+      });
+
+    }
+    catch (err) {
+
+      console.error(
+        "MYSQL ERREUR :",
+        err
+      );
+
+
+      res.status(500).json({
+
+        ok: false,
+
+        message:
+          err.message,
+
+        code:
+          err.code,
+
+        errno:
+          err.errno,
+
+        sqlState:
+          err.sqlState
+
+      });
+    }
   }
-  catch (err) {
-
-    console.error("MYSQL ERREUR :", err);
-
-    res.status(500).json({
-      ok: false,
-      message: err.message,
-      code: err.code,
-      errno: err.errno,
-      sqlState: err.sqlState
-    });
-  }
-});
+);
 
 
 /* =========================================================
    INSCRIPTION
    ========================================================= */
 
-app.post("/api/register", async (req, res) => {
+app.post(
+  "/api/register",
+  async (req, res) => {
 
-  const {
-    firstname,
-    lastname,
-    email,
-    password
-  } = req.body;
+    const {
 
+      firstname,
 
-  if (
-    !firstname ||
-    !lastname ||
-    !email ||
-    !password
-  ) {
+      lastname,
 
-    return res.status(400).json({
-      error: "Tous les champs sont obligatoires"
-    });
-  }
+      email,
+
+      password
+
+    } = req.body;
 
 
-  try {
-
-    const [existing] =
-      await pool.query(
-        `
-        SELECT id
-        FROM users
-        WHERE email = ?
-        `,
-        [email]
-      );
-
-
-    if (existing.length > 0) {
+    if (
+      !firstname ||
+      !lastname ||
+      !email ||
+      !password
+    ) {
 
       return res.status(400).json({
-        error: "Cet e-mail est déjà utilisé"
+        error:
+          "Tous les champs sont obligatoires"
       });
     }
 
 
-    const hash =
-      await bcrypt.hash(password, 10);
+    try {
+
+      const [existing] =
+        await pool.query(
+          `
+            SELECT id
+            FROM users
+            WHERE email = ?
+          `,
+          [
+            email
+          ]
+        );
 
 
-    const [result] =
-      await pool.query(
-        `
-        INSERT INTO users
-        (
-          firstname,
-          lastname,
-          email,
-          password_hash,
-          role,
-          status
-        )
-        VALUES
-        (?, ?, ?, ?, 'user', 'pending')
-        `,
-        [
-          firstname,
-          lastname,
-          email,
-          hash
-        ]
+      if (
+        existing.length > 0
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Cet e-mail est déjà utilisé"
+        });
+      }
+
+
+      const hash =
+        await bcrypt.hash(
+          password,
+          10
+        );
+
+
+      const [result] =
+        await pool.query(
+          `
+            INSERT INTO users
+            (
+              firstname,
+              lastname,
+              email,
+              password_hash,
+              role,
+              status
+            )
+            VALUES
+            (?, ?, ?, ?, 'user', 'pending')
+          `,
+          [
+            firstname,
+            lastname,
+            email,
+            hash
+          ]
+        );
+
+
+      const [rows] =
+        await pool.query(
+          `
+            SELECT
+              id,
+              firstname,
+              lastname,
+              email,
+              role,
+              status,
+              created_at
+            FROM users
+            WHERE id = ?
+          `,
+          [
+            result.insertId
+          ]
+        );
+
+
+      res.status(201).json({
+
+        message:
+          "Demande d'inscription envoyée. En attente de validation par l'administrateur.",
+
+        user:
+          rows[0]
+
+      });
+
+    }
+    catch (err) {
+
+      console.error(
+        "Erreur /api/register :",
+        err
       );
 
 
-    const [rows] =
-      await pool.query(
-        `
-        SELECT
-          id,
-          firstname,
-          lastname,
-          email,
-          role,
-          status,
-          created_at
-        FROM users
-        WHERE id = ?
-        `,
-        [result.insertId]
-      );
+      res.status(500).json({
 
+        error:
+          "Erreur serveur",
 
-    res.status(201).json({
+        details:
+          err.message,
 
-      message:
-        "Demande d'inscription envoyée. En attente de validation par l'administrateur.",
+        code:
+          err.code
 
-      user:
-        rows[0]
-    });
-
+      });
+    }
   }
-  catch (err) {
-
-    console.error(
-      "Erreur /api/register :",
-      err
-    );
-
-    res.status(500).json({
-      error: "Erreur serveur",
-      details: err.message,
-      code: err.code
-    });
-  }
-});
+);
 
 
 /* =========================================================
    CONNEXION
    ========================================================= */
 
-app.post("/api/login", async (req, res) => {
+app.post(
+  "/api/login",
+  async (req, res) => {
 
-  const {
-    email,
-    password
-  } = req.body;
+    const {
 
+      email,
 
-  if (
-    !email ||
-    !password
-  ) {
+      password
 
-    return res.status(400).json({
-      error: "E-mail et mot de passe requis"
-    });
-  }
+    } = req.body;
 
 
-  try {
-
-    const [rows] =
-      await pool.query(
-        `
-        SELECT *
-        FROM users
-        WHERE email = ?
-        `,
-        [email]
-      );
-
-
-    if (rows.length === 0) {
+    if (
+      !email ||
+      !password
+    ) {
 
       return res.status(400).json({
-        error: "Identifiants invalides"
-      });
-    }
-
-
-    const user = rows[0];
-
-
-    const match =
-      await bcrypt.compare(
-        password,
-        user.password_hash
-      );
-
-
-    if (!match) {
-
-      return res.status(400).json({
-        error: "Identifiants invalides"
-      });
-    }
-
-
-    if (user.status === "pending") {
-
-      return res.status(403).json({
         error:
-          "Compte en attente de validation par l'administrateur"
+          "E-mail et mot de passe requis"
       });
     }
 
 
-    if (user.status === "rejected") {
+    try {
 
-      return res.status(403).json({
-        error: "Compte refusé"
-      });
-    }
+      const [rows] =
+        await pool.query(
+          `
+            SELECT *
+            FROM users
+            WHERE email = ?
+          `,
+          [
+            email
+          ]
+        );
 
 
-    const token =
-      createToken(user);
+      if (
+        rows.length === 0
+      ) {
 
-
-    res.json({
-
-      message: "Connexion réussie",
-
-      token,
-
-      user: {
-
-        id: user.id,
-
-        firstname:
-          user.firstname,
-
-        lastname:
-          user.lastname,
-
-        email:
-          user.email,
-
-        role:
-          user.role,
-
-        status:
-          user.status
+        return res.status(400).json({
+          error:
+            "Identifiants invalides"
+        });
       }
-    });
 
+
+      const user =
+        rows[0];
+
+
+      const match =
+        await bcrypt.compare(
+          password,
+          user.password_hash
+        );
+
+
+      if (!match) {
+
+        return res.status(400).json({
+          error:
+            "Identifiants invalides"
+        });
+      }
+
+
+      if (
+        user.status ===
+        "pending"
+      ) {
+
+        return res.status(403).json({
+
+          error:
+            "Compte en attente de validation par l'administrateur"
+
+        });
+      }
+
+
+      if (
+        user.status ===
+        "rejected"
+      ) {
+
+        return res.status(403).json({
+          error:
+            "Compte refusé"
+        });
+      }
+
+
+      const token =
+        createToken(
+          user
+        );
+
+
+      res.json({
+
+        message:
+          "Connexion réussie",
+
+        token,
+
+        user: {
+
+          id:
+            user.id,
+
+          firstname:
+            user.firstname,
+
+          lastname:
+            user.lastname,
+
+          email:
+            user.email,
+
+          role:
+            user.role,
+
+          status:
+            user.status
+
+        }
+
+      });
+
+    }
+    catch (err) {
+
+      console.error(
+        "Erreur /api/login :",
+        err
+      );
+
+
+      res.status(500).json({
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message,
+
+        code:
+          err.code
+
+      });
+    }
   }
-  catch (err) {
-
-    console.error(
-      "Erreur /api/login :",
-      err
-    );
-
-    res.status(500).json({
-      error: "Erreur serveur",
-      details: err.message,
-      code: err.code
-    });
-  }
-});
+);
 
 
 /* =========================================================
@@ -635,18 +1106,23 @@ app.get(
         FROM users
       `;
 
+
       const params = [];
 
 
       if (status) {
 
-        sql += " WHERE status = ?";
+        sql +=
+          " WHERE status = ?";
 
-        params.push(status);
+        params.push(
+          status
+        );
       }
 
 
-      sql += " ORDER BY created_at DESC";
+      sql +=
+        " ORDER BY created_at DESC";
 
 
       const [rows] =
@@ -656,7 +1132,9 @@ app.get(
         );
 
 
-      res.json(rows);
+      res.json(
+        rows
+      );
 
     }
     catch (err) {
@@ -666,10 +1144,18 @@ app.get(
         err
       );
 
+
       res.status(500).json({
-        error: "Erreur serveur",
-        details: err.message,
-        code: err.code
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message,
+
+        code:
+          err.code
+
       });
     }
   }
@@ -689,6 +1175,7 @@ app.patch(
     const userId =
       req.params.id;
 
+
     const {
       status
     } = req.body;
@@ -703,7 +1190,8 @@ app.patch(
     ) {
 
       return res.status(400).json({
-        error: "Statut invalide"
+        error:
+          "Statut invalide"
       });
     }
 
@@ -713,9 +1201,9 @@ app.patch(
       const [result] =
         await pool.query(
           `
-          UPDATE users
-          SET status = ?
-          WHERE id = ?
+            UPDATE users
+            SET status = ?
+            WHERE id = ?
           `,
           [
             status,
@@ -724,10 +1212,13 @@ app.patch(
         );
 
 
-      if (result.affectedRows === 0) {
+      if (
+        result.affectedRows === 0
+      ) {
 
         return res.status(404).json({
-          error: "Utilisateur introuvable"
+          error:
+            "Utilisateur introuvable"
         });
       }
 
@@ -735,23 +1226,30 @@ app.patch(
       const [rows] =
         await pool.query(
           `
-          SELECT
-            id,
-            firstname,
-            lastname,
-            email,
-            role,
-            status
-          FROM users
-          WHERE id = ?
+            SELECT
+              id,
+              firstname,
+              lastname,
+              email,
+              role,
+              status
+            FROM users
+            WHERE id = ?
           `,
-          [userId]
+          [
+            userId
+          ]
         );
 
 
       res.json({
-        message: "Statut mis à jour",
-        user: rows[0]
+
+        message:
+          "Statut mis à jour",
+
+        user:
+          rows[0]
+
       });
 
     }
@@ -762,15 +1260,22 @@ app.patch(
         err
       );
 
+
       res.status(500).json({
-        error: "Erreur serveur",
-        details: err.message,
-        code: err.code
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message,
+
+        code:
+          err.code
+
       });
     }
   }
 );
-
 
 /* =========================================================
    CREATION ADMIN AVEC SETUP_KEY
@@ -787,7 +1292,8 @@ app.post(
     if (!process.env.SETUP_KEY) {
 
       return res.status(500).json({
-        error: "SETUP_KEY manquant côté serveur"
+        error:
+          "SETUP_KEY manquant côté serveur"
       });
     }
 
@@ -798,16 +1304,19 @@ app.post(
     ) {
 
       return res.status(403).json({
-        error: "Clé setup invalide"
+        error:
+          "Clé setup invalide"
       });
     }
 
 
     const {
+
       firstname,
       lastname,
       email,
       password
+
     } = req.body;
 
 
@@ -819,7 +1328,8 @@ app.post(
     ) {
 
       return res.status(400).json({
-        error: "Tous les champs sont obligatoires"
+        error:
+          "Tous les champs sont obligatoires"
       });
     }
 
@@ -829,18 +1339,23 @@ app.post(
       const [existing] =
         await pool.query(
           `
-          SELECT id
-          FROM users
-          WHERE email = ?
+            SELECT id
+            FROM users
+            WHERE email = ?
           `,
-          [email]
+          [
+            email
+          ]
         );
 
 
-      if (existing.length > 0) {
+      if (
+        existing.length > 0
+      ) {
 
         return res.status(400).json({
-          error: "Cet e-mail est déjà utilisé"
+          error:
+            "Cet e-mail est déjà utilisé"
         });
       }
 
@@ -855,17 +1370,17 @@ app.post(
       const [result] =
         await pool.query(
           `
-          INSERT INTO users
-          (
-            firstname,
-            lastname,
-            email,
-            password_hash,
-            role,
-            status
-          )
-          VALUES
-          (?, ?, ?, ?, 'admin', 'approved')
+            INSERT INTO users
+            (
+              firstname,
+              lastname,
+              email,
+              password_hash,
+              role,
+              status
+            )
+            VALUES
+            (?, ?, ?, ?, 'admin', 'approved')
           `,
           [
             firstname,
@@ -879,24 +1394,31 @@ app.post(
       const [rows] =
         await pool.query(
           `
-          SELECT
-            id,
-            firstname,
-            lastname,
-            email,
-            role,
-            status,
-            created_at
-          FROM users
-          WHERE id = ?
+            SELECT
+              id,
+              firstname,
+              lastname,
+              email,
+              role,
+              status,
+              created_at
+            FROM users
+            WHERE id = ?
           `,
-          [result.insertId]
+          [
+            result.insertId
+          ]
         );
 
 
       res.status(201).json({
-        message: "Admin créé avec succès",
-        admin: rows[0]
+
+        message:
+          "Admin créé avec succès",
+
+        admin:
+          rows[0]
+
       });
 
     }
@@ -907,10 +1429,18 @@ app.post(
         err
       );
 
+
       res.status(500).json({
-        error: "Erreur serveur",
-        details: err.message,
-        code: err.code
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message,
+
+        code:
+          err.code
+
       });
     }
   }
@@ -928,13 +1458,24 @@ app.delete(
   async (req, res) => {
 
     const userId =
-      Number(req.params.id);
+      Number(
+        req.params.id
+      );
 
 
-    if ([1, 3, 5, 10].includes(userId)) {
+    /*
+      Utilisateurs protégés dans ton projet actuel.
+    */
+
+    if (
+      [1, 3, 5, 10].includes(
+        userId
+      )
+    ) {
 
       return res.status(403).json({
-        error: "Cet utilisateur est protégé"
+        error:
+          "Cet utilisateur est protégé"
       });
     }
 
@@ -944,31 +1485,42 @@ app.delete(
       const [result] =
         await pool.query(
           `
-          DELETE FROM users
-          WHERE id = ?
+            DELETE FROM users
+            WHERE id = ?
           `,
-          [userId]
+          [
+            userId
+          ]
         );
 
 
-      if (result.affectedRows === 0) {
+      if (
+        result.affectedRows === 0
+      ) {
 
         return res.status(404).json({
-          error: "Utilisateur introuvable"
+          error:
+            "Utilisateur introuvable"
         });
       }
 
 
       res.json({
-        message: "Utilisateur supprimé"
+        message:
+          "Utilisateur supprimé"
       });
 
     }
     catch (err) {
 
       res.status(500).json({
-        error: "Erreur serveur",
-        details: err.message
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message
+
       });
     }
   }
@@ -986,7 +1538,9 @@ app.patch(
   async (req, res) => {
 
     const userId =
-      Number(req.params.id);
+      Number(
+        req.params.id
+      );
 
 
     const {
@@ -1003,15 +1557,21 @@ app.patch(
     ) {
 
       return res.status(400).json({
-        error: "Rôle invalide"
+        error:
+          "Rôle invalide"
       });
     }
 
 
-    if ([1, 3, 5, 10].includes(userId)) {
+    if (
+      [1, 3, 5, 10].includes(
+        userId
+      )
+    ) {
 
       return res.status(403).json({
-        error: "Cet utilisateur est protégé"
+        error:
+          "Cet utilisateur est protégé"
       });
     }
 
@@ -1021,9 +1581,9 @@ app.patch(
       const [result] =
         await pool.query(
           `
-          UPDATE users
-          SET role = ?
-          WHERE id = ?
+            UPDATE users
+            SET role = ?
+            WHERE id = ?
           `,
           [
             role,
@@ -1032,24 +1592,33 @@ app.patch(
         );
 
 
-      if (result.affectedRows === 0) {
+      if (
+        result.affectedRows === 0
+      ) {
 
         return res.status(404).json({
-          error: "Utilisateur introuvable"
+          error:
+            "Utilisateur introuvable"
         });
       }
 
 
       res.json({
-        message: "Rôle modifié"
+        message:
+          "Rôle modifié"
       });
 
     }
     catch (err) {
 
       res.status(500).json({
-        error: "Erreur serveur",
-        details: err.message
+
+        error:
+          "Erreur serveur",
+
+        details:
+          err.message
+
       });
     }
   }
@@ -1064,7 +1633,9 @@ app.get(
   "/api/esp32/command",
   (req, res) => {
 
-    res.json(currentCommand);
+    res.json(
+      currentCommand
+    );
   }
 );
 
@@ -1087,6 +1658,7 @@ app.post(
 
       created_at:
         new Date().toISOString()
+
     };
 
 
@@ -1097,6 +1669,7 @@ app.post(
 
       command:
         currentCommand
+
     });
   }
 );
@@ -1106,30 +1679,78 @@ app.post(
    ESP32 — DATA TEMPS REEL
 
    PAS D'ENREGISTREMENT MYSQL ICI
+
+   Cette route reçoit :
+   - capteurs
+   - servos
+   - états
+   - progression mesure
+   - résumé I-V
+   - GPS
+
+   Le GPS est également copié dans gpsData afin que sa
+   dernière valeur reste disponible même lorsque le message
+   ESP32 suivant ne contient pas les champs GPS.
    ========================================================= */
 
 app.post(
   "/api/esp32/data",
   (req, res) => {
 
+    const now =
+      new Date().toISOString();
+
+
+    /* =====================================================
+       MISE A JOUR GPS
+       ===================================================== */
+
+    updateGpsData(
+      req.body
+    );
+
+
+    /* =====================================================
+       DONNEE TEMPS REEL
+
+       On garde le message reçu comme avant.
+
+       On y ajoute cependant l'état GPS conservé par le
+       serveur.
+
+       Cela permet à app.js de recevoir le GPS directement
+       avec son GET /api/esp32/data existant.
+       ===================================================== */
+
     solarData = {
 
       ...req.body,
 
+      ...gpsData,
+
       received_at:
-        new Date().toISOString()
+        now
+
     };
 
 
-    esp32Status.connected = true;
+    /* =====================================================
+       STATUT ESP32
+       ===================================================== */
+
+    esp32Status.connected =
+      true;
+
 
     esp32Status.lastSeen =
-      new Date().toISOString();
+      now;
+
 
     esp32Status.ip =
       req.body.ip ||
       esp32Status.ip ||
       null;
+
 
     esp32Status.heap =
       req.body.heap ||
@@ -1138,7 +1759,13 @@ app.post(
 
 
     res.json({
-      message: "Données reçues"
+
+      message:
+        "Données reçues",
+
+      gps_valid:
+        gpsData.gps_valid
+
     });
   }
 );
@@ -1155,7 +1782,159 @@ app.get(
   authRequired,
   (req, res) => {
 
-    res.json(solarData);
+    /*
+      On fusionne encore gpsData ici.
+
+      Ainsi même si solarData a été créé avant le premier
+      fix GPS ou qu'une autre partie du programme le modifie,
+      la réponse contient toujours l'état GPS actuel.
+    */
+
+    res.json({
+
+      ...solarData,
+
+      ...gpsData
+
+    });
+  }
+);
+
+
+/* =========================================================
+   GPS — LECTURE DE LA DERNIERE POSITION
+
+   USER + MANAGER + ADMIN
+
+   Cette route est facultative pour app.js car le GPS est
+   également présent dans /api/esp32/data.
+
+   Elle est néanmoins utile pour :
+   - diagnostic
+   - page GPS indépendante
+   - évolution future du projet
+   ========================================================= */
+
+app.get(
+  "/api/gps",
+  authRequired,
+  (req, res) => {
+
+    res.json({
+
+      ...gpsData,
+
+      esp32_connected:
+        esp32Status.connected,
+
+      esp32_last_seen:
+        esp32Status.lastSeen
+
+    });
+  }
+);
+
+
+/* =========================================================
+   GPS — RECEPTION DIRECTE DEPUIS ESP32
+
+   Cette route permettra plus tard à l'ESP32 d'envoyer
+   uniquement le GPS sans remplacer le message principal.
+
+   Aucun JWT utilisateur n'est demandé ici, comme pour
+   /api/esp32/data et /api/esp32/ping dans ton architecture
+   actuelle.
+
+   Le navigateur, lui, ne lit cette information qu'après
+   authentification avec GET /api/gps ou GET /api/esp32/data.
+   ========================================================= */
+
+app.post(
+  "/api/esp32/gps",
+  (req, res) => {
+
+    const incomingGps =
+      extractGpsFromBody(
+        req.body
+      );
+
+
+    if (!incomingGps) {
+
+      return res.status(400).json({
+
+        success:
+          false,
+
+        error:
+          "Aucune donnée GPS reçue"
+
+      });
+    }
+
+
+    updateGpsData(
+      req.body
+    );
+
+
+    /*
+      Un message GPS provenant de l'ESP32 compte également
+      comme activité de l'ESP32.
+    */
+
+    const now =
+      new Date().toISOString();
+
+
+    esp32Status.connected =
+      true;
+
+
+    esp32Status.lastSeen =
+      now;
+
+
+    esp32Status.ip =
+      req.body.ip ||
+      esp32Status.ip ||
+      null;
+
+
+    esp32Status.heap =
+      req.body.heap ||
+      esp32Status.heap ||
+      null;
+
+
+    /*
+      On met aussi le GPS dans solarData afin que
+      /api/esp32/data le fournisse immédiatement.
+    */
+
+    solarData = {
+
+      ...solarData,
+
+      ...gpsData
+
+    };
+
+
+    res.json({
+
+      success:
+        true,
+
+      message:
+        gpsData.gps_valid
+          ? "Position GPS reçue"
+          : "GPS reçu, en attente d'un fix valide",
+
+      gps:
+        gpsData
+
+    });
   }
 );
 
@@ -1168,14 +1947,18 @@ app.post(
   "/api/esp32/ping",
   (req, res) => {
 
-    esp32Status.connected = true;
+    esp32Status.connected =
+      true;
+
 
     esp32Status.lastSeen =
       new Date().toISOString();
 
+
     esp32Status.ip =
       req.body.ip ||
       null;
+
 
     esp32Status.heap =
       req.body.heap ||
@@ -1183,7 +1966,8 @@ app.post(
 
 
     res.json({
-      success: true
+      success:
+        true
     });
   }
 );
@@ -1200,6 +1984,7 @@ app.get(
     const now =
       Date.now();
 
+
     const last =
       esp32Status.lastSeen
         ? new Date(
@@ -1207,6 +1992,12 @@ app.get(
           ).getTime()
         : 0;
 
+
+    /*
+      Si aucun ping ou aucune donnée n'a été reçue
+      pendant 10 secondes, l'ESP32 est considéré
+      déconnecté.
+    */
 
     const connected =
       now - last < 10000;
@@ -1228,6 +2019,7 @@ app.get(
 
       heap:
         esp32Status.heap
+
     });
   }
 );
@@ -1237,6 +2029,11 @@ app.get(
    ENREGISTRER UNE MESURE
 
    MANAGER + ADMIN
+
+   IMPORTANT :
+   On enregistre uniquement les points finaux I-V.
+
+   measurement_samples n'est plus alimentée.
    ========================================================= */
 
 app.post(
@@ -1267,11 +2064,14 @@ app.post(
       hum_avg,
       tc_avg,
 
-      points,
-      samples
+      points
 
     } = req.body;
 
+
+    /* =====================================================
+       VERIFICATION POINTS
+       ===================================================== */
 
     if (
       !Array.isArray(points) ||
@@ -1279,23 +2079,28 @@ app.post(
     ) {
 
       return res.status(400).json({
-        error: "Aucun point I-V reçu"
+        error:
+          "Aucun point I-V reçu"
       });
     }
 
 
-    if (points.length > 1000) {
+    /*
+      Le scan normal contient 256 points.
+
+      On garde une limite de sécurité à 1000 pour éviter
+      qu'une requête anormale surcharge la base.
+    */
+
+    if (
+      points.length > 1000
+    ) {
 
       return res.status(400).json({
-        error: "Nombre de points trop élevé"
+        error:
+          "Nombre de points trop élevé"
       });
     }
-
-
-    const measurementSamples =
-      Array.isArray(samples)
-        ? samples.slice(0, 1000)
-        : [];
 
 
     let connection;
@@ -1310,107 +2115,149 @@ app.post(
       await connection.beginTransaction();
 
 
-      /* =========================
+      /* ===================================================
          MESURE PRINCIPALE
-         ========================= */
+         =================================================== */
 
       const [result] =
         await connection.query(
           `
-          INSERT INTO measurements
-          (
-            user_id,
+            INSERT INTO measurements
+            (
+              user_id,
 
-            series_no,
+              series_no,
 
-            orient_mode,
+              orient_mode,
 
-            servo1_deg,
-            servo2_deg,
+              servo1_deg,
+              servo2_deg,
 
-            vmpp,
-            impp,
-            pmpp,
+              vmpp,
+              impp,
+              pmpp,
 
-            isc,
-            voc,
-            umax,
+              isc,
+              voc,
+              umax,
 
-            lux_avg,
-            temp_avg,
-            hum_avg,
-            tc_avg,
+              lux_avg,
+              temp_avg,
+              hum_avg,
+              tc_avg,
 
-            points_count,
-            samples_count
-          )
-          VALUES
-          (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?
-          )
+              points_count
+            )
+
+            VALUES
+            (
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?
+            )
           `,
           [
 
             req.user.id || null,
 
-            Number.isFinite(Number(series_no))
+
+            Number.isFinite(
+              Number(series_no)
+            )
               ? Number(series_no)
               : 0,
 
-            orient_mode || null,
 
-            Number.isFinite(Number(servo1_deg))
+            orient_mode ||
+              null,
+
+
+            Number.isFinite(
+              Number(servo1_deg)
+            )
               ? Number(servo1_deg)
               : null,
 
-            Number.isFinite(Number(servo2_deg))
+
+            Number.isFinite(
+              Number(servo2_deg)
+            )
               ? Number(servo2_deg)
               : null,
 
-            Number.isFinite(Number(vmpp))
+
+            Number.isFinite(
+              Number(vmpp)
+            )
               ? Number(vmpp)
               : null,
 
-            Number.isFinite(Number(impp))
+
+            Number.isFinite(
+              Number(impp)
+            )
               ? Number(impp)
               : null,
 
-            Number.isFinite(Number(pmpp))
+
+            Number.isFinite(
+              Number(pmpp)
+            )
               ? Number(pmpp)
               : null,
 
-            Number.isFinite(Number(isc))
+
+            Number.isFinite(
+              Number(isc)
+            )
               ? Number(isc)
               : null,
 
-            Number.isFinite(Number(voc))
+
+            Number.isFinite(
+              Number(voc)
+            )
               ? Number(voc)
               : null,
 
-            Number.isFinite(Number(umax))
+
+            Number.isFinite(
+              Number(umax)
+            )
               ? Number(umax)
               : null,
 
-            Number.isFinite(Number(lux_avg))
+
+            Number.isFinite(
+              Number(lux_avg)
+            )
               ? Number(lux_avg)
               : null,
 
-            Number.isFinite(Number(temp_avg))
+
+            Number.isFinite(
+              Number(temp_avg)
+            )
               ? Number(temp_avg)
               : null,
 
-            Number.isFinite(Number(hum_avg))
+
+            Number.isFinite(
+              Number(hum_avg)
+            )
               ? Number(hum_avg)
               : null,
 
-            Number.isFinite(Number(tc_avg))
+
+            Number.isFinite(
+              Number(tc_avg)
+            )
               ? Number(tc_avg)
               : null,
 
-            points.length,
 
-            measurementSamples.length
+            points.length
+
           ]
         );
 
@@ -1419,9 +2266,12 @@ app.post(
         result.insertId;
 
 
-      /* =========================
-         POINTS I-V
-         ========================= */
+      /* ===================================================
+         256 POINTS FINAUX I-V
+
+         Ce sont exactement les points envoyés par app.js
+         après réception de iv_summary.
+         =================================================== */
 
       const pointValues =
         points.map(
@@ -1433,6 +2283,7 @@ app.post(
                 p.x
               );
 
+
             const i =
               Number(
                 p.i_a ??
@@ -1441,10 +2292,19 @@ app.post(
 
 
             let power =
-              Number(p.p_w);
+              Number(
+                p.p_w
+              );
 
 
-            if (!Number.isFinite(power)) {
+            /*
+              Si P n'est pas fourni,
+              on le calcule simplement avec U × I.
+            */
+
+            if (
+              !Number.isFinite(power)
+            ) {
 
               power =
                 (
@@ -1460,21 +2320,28 @@ app.post(
 
               measurementId,
 
-              Number.isFinite(Number(p.k))
+
+              Number.isFinite(
+                Number(p.k)
+              )
                 ? Number(p.k)
                 : index,
+
 
               Number.isFinite(u)
                 ? u
                 : null,
 
+
               Number.isFinite(i)
                 ? i
                 : null,
 
+
               Number.isFinite(power)
                 ? power
                 : null
+
             ];
           }
         );
@@ -1482,111 +2349,32 @@ app.post(
 
       await connection.query(
         `
-        INSERT INTO measurement_points
-        (
-          measurement_id,
-          k,
-          u_v,
-          i_a,
-          p_w
-        )
-        VALUES ?
-        `,
-        [pointValues]
-      );
-
-
-      /* =========================
-         CAPTEURS PENDANT MESURE
-         ========================= */
-
-      if (measurementSamples.length) {
-
-        const sampleValues =
-          measurementSamples.map(
-            (s, index) => [
-
-              measurementId,
-
-              Number.isFinite(Number(s.k))
-                ? Number(s.k)
-                : index,
-
-              Number.isFinite(Number(s.seq))
-                ? Number(s.seq)
-                : null,
-
-              Number.isFinite(Number(s.ts_ms))
-                ? Number(s.ts_ms)
-                : null,
-
-              Number.isFinite(Number(s.line))
-                ? Number(s.line)
-                : null,
-
-              Number.isFinite(Number(s.u_v))
-                ? Number(s.u_v)
-                : null,
-
-              Number.isFinite(Number(s.i_a))
-                ? Number(s.i_a)
-                : null,
-
-              Number.isFinite(Number(s.lux))
-                ? Number(s.lux)
-                : null,
-
-              Number.isFinite(Number(s.temp_dht_c))
-                ? Number(s.temp_dht_c)
-                : null,
-
-              Number.isFinite(Number(s.hum_dht))
-                ? Number(s.hum_dht)
-                : null,
-
-              Number.isFinite(Number(s.tc_c))
-                ? Number(s.tc_c)
-                : null,
-
-              Number.isFinite(Number(s.servo1_deg))
-                ? Number(s.servo1_deg)
-                : null,
-
-              Number.isFinite(Number(s.servo2_deg))
-                ? Number(s.servo2_deg)
-                : null,
-
-              s.orient_mode ||
-              orient_mode ||
-              null
-            ]
-          );
-
-
-        await connection.query(
-          `
-          INSERT INTO measurement_samples
+          INSERT INTO measurement_points
           (
             measurement_id,
             k,
-            seq,
-            ts_ms,
-            line_no,
             u_v,
             i_a,
-            lux,
-            temp_dht_c,
-            hum_dht,
-            tc_c,
-            servo1_deg,
-            servo2_deg,
-            orient_mode
+            p_w
           )
+
           VALUES ?
-          `,
-          [sampleValues]
-        );
-      }
+        `,
+        [
+          pointValues
+        ]
+      );
+
+
+      /*
+        IMPORTANT :
+
+        Aucun INSERT dans measurement_samples.
+
+        Les anciens enregistrements éventuellement présents
+        dans cette table restent dans MySQL, mais les nouvelles
+        mesures n'y écrivent plus rien.
+      */
 
 
       await connection.commit();
@@ -1595,11 +2383,13 @@ app.post(
       const [savedRows] =
         await pool.query(
           `
-          SELECT *
-          FROM measurements
-          WHERE id = ?
+            SELECT *
+            FROM measurements
+            WHERE id = ?
           `,
-          [measurementId]
+          [
+            measurementId
+          ]
         );
 
 
@@ -1609,6 +2399,7 @@ app.post(
           "Mesure enregistrée",
 
         ...savedRows[0]
+
       });
 
     }
@@ -1617,7 +2408,9 @@ app.post(
       if (connection) {
 
         try {
+
           await connection.rollback();
+
         }
         catch {}
       }
@@ -1639,18 +2432,19 @@ app.post(
 
         code:
           err.code
+
       });
 
     }
     finally {
 
       if (connection) {
+
         connection.release();
       }
     }
   }
 );
-
 
 /* =========================================================
    LISTE HISTORIQUE
@@ -1668,54 +2462,55 @@ app.get(
       const [rows] =
         await pool.query(
           `
-          SELECT
+            SELECT
 
-            m.id,
+              m.id,
 
-            m.user_id,
+              m.user_id,
 
-            m.series_no,
+              m.series_no,
 
-            m.orient_mode,
+              m.orient_mode,
 
-            m.servo1_deg,
-            m.servo2_deg,
+              m.servo1_deg,
+              m.servo2_deg,
 
-            m.vmpp,
-            m.impp,
-            m.pmpp,
+              m.vmpp,
+              m.impp,
+              m.pmpp,
 
-            m.isc,
-            m.voc,
-            m.umax,
+              m.isc,
+              m.voc,
+              m.umax,
 
-            m.lux_avg,
-            m.temp_avg,
-            m.hum_avg,
-            m.tc_avg,
+              m.lux_avg,
+              m.temp_avg,
+              m.hum_avg,
+              m.tc_avg,
 
-            m.points_count,
-            m.samples_count,
+              m.points_count,
 
-            m.created_at,
+              m.created_at,
 
-            u.firstname,
-            u.lastname,
-            u.email
+              u.firstname,
+              u.lastname,
+              u.email
 
-          FROM measurements m
+            FROM measurements m
 
-          LEFT JOIN users u
-            ON u.id = m.user_id
+            LEFT JOIN users u
+              ON u.id = m.user_id
 
-          ORDER BY
-            m.created_at DESC,
-            m.id DESC
+            ORDER BY
+              m.created_at DESC,
+              m.id DESC
           `
         );
 
 
-      res.json(rows);
+      res.json(
+        rows
+      );
 
     }
     catch (err) {
@@ -1733,6 +2528,7 @@ app.get(
 
         details:
           err.message
+
       });
     }
   }
@@ -1743,6 +2539,14 @@ app.get(
    CHARGER UNE MESURE
 
    USER + MANAGER + ADMIN
+
+   On charge uniquement :
+   - informations générales
+   - paramètres I-V
+   - conditions environnementales moyennes
+   - points finaux de la courbe
+
+   Les anciens measurement_samples ne sont plus utilisés.
    ========================================================= */
 
 app.get(
@@ -1751,48 +2555,62 @@ app.get(
   async (req, res) => {
 
     const measurementId =
-      Number(req.params.id);
+      Number(
+        req.params.id
+      );
 
 
     if (
-      !Number.isInteger(measurementId) ||
+      !Number.isInteger(
+        measurementId
+      ) ||
       measurementId <= 0
     ) {
 
       return res.status(400).json({
-        error: "Identifiant de mesure invalide"
+        error:
+          "Identifiant de mesure invalide"
       });
     }
 
 
     try {
 
+      /* ===================================================
+         MESURE
+         =================================================== */
+
       const [measurements] =
         await pool.query(
           `
-          SELECT
+            SELECT
 
-            m.*,
+              m.*,
 
-            u.firstname,
-            u.lastname,
-            u.email
+              u.firstname,
+              u.lastname,
+              u.email
 
-          FROM measurements m
+            FROM measurements m
 
-          LEFT JOIN users u
-            ON u.id = m.user_id
+            LEFT JOIN users u
+              ON u.id = m.user_id
 
-          WHERE m.id = ?
+            WHERE m.id = ?
           `,
-          [measurementId]
+          [
+            measurementId
+          ]
         );
 
 
-      if (measurements.length === 0) {
+      if (
+        measurements.length === 0
+      ) {
 
         return res.status(404).json({
-          error: "Mesure introuvable"
+          error:
+            "Mesure introuvable"
         });
       }
 
@@ -1801,139 +2619,163 @@ app.get(
         measurements[0];
 
 
+      /* ===================================================
+         POINTS FINAUX I-V
+         =================================================== */
+
       const [points] =
         await pool.query(
           `
-          SELECT
-            k,
-            u_v,
-            i_a,
-            p_w
-          FROM measurement_points
-          WHERE measurement_id = ?
-          ORDER BY k ASC
+            SELECT
+
+              k,
+
+              u_v,
+
+              i_a,
+
+              p_w
+
+            FROM measurement_points
+
+            WHERE measurement_id = ?
+
+            ORDER BY k ASC
           `,
-          [measurementId]
+          [
+            measurementId
+          ]
         );
 
 
-      const [samples] =
-        await pool.query(
-          `
-          SELECT
-
-            k,
-
-            seq,
-
-            ts_ms,
-
-            line_no AS line,
-
-            u_v,
-            i_a,
-
-            lux,
-
-            temp_dht_c,
-            hum_dht,
-            tc_c,
-
-            servo1_deg,
-            servo2_deg,
-
-            orient_mode
-
-          FROM measurement_samples
-
-          WHERE measurement_id = ?
-
-          ORDER BY id ASC
-          `,
-          [measurementId]
-        );
-
+      /* ===================================================
+         REPONSE
+         =================================================== */
 
       res.json({
 
         id:
           measurement.id,
 
+
         user_id:
           measurement.user_id,
+
 
         created_at:
           measurement.created_at,
 
+
         points_count:
           measurement.points_count,
 
-        samples_count:
-          measurement.samples_count,
 
+        /*
+          On garde samples_count dans la réponse pour
+          compatibilité avec l'ancien app.js.
+
+          Il vaut toujours 0 dans le nouveau système.
+        */
+
+        samples_count:
+          0,
+
+
+        /* =================================================
+           META
+           ================================================= */
 
         meta: {
 
           series:
             measurement.series_no,
 
+
           orient_mode:
             measurement.orient_mode,
+
 
           servo1_deg:
             measurement.servo1_deg,
 
+
           servo2_deg:
             measurement.servo2_deg,
+
 
           vmpp:
             measurement.vmpp,
 
+
           impp:
             measurement.impp,
+
 
           pmpp:
             measurement.pmpp,
 
+
           isc:
             measurement.isc,
+
 
           voc:
             measurement.voc,
 
+
           umax:
             measurement.umax
+
         },
 
+
+        /* =================================================
+           ENVIRONNEMENT
+           ================================================= */
 
         env: {
 
           luxAvg:
             measurement.lux_avg,
 
+
           tempAvg:
             measurement.temp_avg,
+
 
           humAvg:
             measurement.hum_avg,
 
+
           tcAvg:
             measurement.tc_avg
+
         },
 
+
+        /* =================================================
+           UTILISATEUR
+           ================================================= */
 
         user: {
 
           firstname:
             measurement.firstname,
 
+
           lastname:
             measurement.lastname,
 
+
           email:
             measurement.email
+
         },
 
+
+        /* =================================================
+           256 POINTS FINAUX
+           ================================================= */
 
         points:
           points.map(
@@ -1942,76 +2784,43 @@ app.get(
               k:
                 p.k,
 
+
               x:
-                Number(p.u_v),
+                p.u_v === null
+                  ? null
+                  : Number(
+                      p.u_v
+                    ),
+
 
               y:
-                Number(p.i_a),
+                p.i_a === null
+                  ? null
+                  : Number(
+                      p.i_a
+                    ),
+
 
               p_w:
                 p.p_w === null
                   ? null
-                  : Number(p.p_w)
+                  : Number(
+                      p.p_w
+                    )
+
             })
           ),
 
 
-        samples:
-          samples.map(
-            s => ({
+        /*
+          Compatibilité avec l'ancien app.js.
 
-              k:
-                s.k,
+          Il n'y a maintenant plus d'échantillons bruts
+          sauvegardés en base.
+        */
 
-              seq:
-                s.seq,
+        samples: []
 
-              ts_ms:
-                s.ts_ms,
-
-              line:
-                s.line,
-
-              u_v:
-                s.u_v === null
-                  ? null
-                  : Number(s.u_v),
-
-              i_a:
-                s.i_a === null
-                  ? null
-                  : Number(s.i_a),
-
-              lux:
-                s.lux === null
-                  ? null
-                  : Number(s.lux),
-
-              temp_dht_c:
-                s.temp_dht_c === null
-                  ? null
-                  : Number(s.temp_dht_c),
-
-              hum_dht:
-                s.hum_dht === null
-                  ? null
-                  : Number(s.hum_dht),
-
-              tc_c:
-                s.tc_c === null
-                  ? null
-                  : Number(s.tc_c),
-
-              servo1_deg:
-                s.servo1_deg,
-
-              servo2_deg:
-                s.servo2_deg,
-
-              orient_mode:
-                s.orient_mode
-            })
-          )
       });
 
     }
@@ -2030,6 +2839,7 @@ app.get(
 
         details:
           err.message
+
       });
     }
   }
@@ -2049,16 +2859,21 @@ app.delete(
   async (req, res) => {
 
     const measurementId =
-      Number(req.params.id);
+      Number(
+        req.params.id
+      );
 
 
     if (
-      !Number.isInteger(measurementId) ||
+      !Number.isInteger(
+        measurementId
+      ) ||
       measurementId <= 0
     ) {
 
       return res.status(400).json({
-        error: "Identifiant de mesure invalide"
+        error:
+          "Identifiant de mesure invalide"
       });
     }
 
@@ -2068,19 +2883,33 @@ app.delete(
       const [result] =
         await pool.query(
           `
-          DELETE FROM measurements
-          WHERE id = ?
+            DELETE FROM measurements
+            WHERE id = ?
           `,
-          [measurementId]
+          [
+            measurementId
+          ]
         );
 
 
-      if (result.affectedRows === 0) {
+      if (
+        result.affectedRows === 0
+      ) {
 
         return res.status(404).json({
-          error: "Mesure introuvable"
+          error:
+            "Mesure introuvable"
         });
       }
+
+
+      /*
+        measurement_points est automatiquement supprimé
+        grâce à :
+
+        FOREIGN KEY measurement_id
+        ON DELETE CASCADE
+      */
 
 
       res.json({
@@ -2090,6 +2919,7 @@ app.delete(
 
         id:
           measurementId
+
       });
 
     }
@@ -2108,7 +2938,104 @@ app.delete(
 
         details:
           err.message
+
       });
+    }
+  }
+);
+
+
+/* =========================================================
+   SUPPRIMER TOUT L'HISTORIQUE
+
+   MANAGER + ADMIN
+
+   Cette route est utile pour le bouton
+   "Vider historique" de la page web.
+   ========================================================= */
+
+app.delete(
+  "/api/measurements",
+  authRequired,
+  managerRequired,
+  async (req, res) => {
+
+    let connection;
+
+
+    try {
+
+      connection =
+        await pool.getConnection();
+
+
+      await connection.beginTransaction();
+
+
+      /*
+        Grâce à ON DELETE CASCADE,
+        supprimer measurements supprime également
+        measurement_points.
+      */
+
+      const [result] =
+        await connection.query(
+          `
+            DELETE FROM measurements
+          `
+        );
+
+
+      await connection.commit();
+
+
+      res.json({
+
+        message:
+          "Historique supprimé",
+
+        deleted:
+          result.affectedRows
+
+      });
+
+    }
+    catch (err) {
+
+      if (connection) {
+
+        try {
+
+          await connection.rollback();
+
+        }
+        catch {}
+      }
+
+
+      console.error(
+        "Erreur suppression historique :",
+        err
+      );
+
+
+      res.status(500).json({
+
+        error:
+          "Impossible de supprimer l'historique",
+
+        details:
+          err.message
+
+      });
+
+    }
+    finally {
+
+      if (connection) {
+
+        connection.release();
+      }
     }
   }
 );
@@ -2128,33 +3055,189 @@ app.get(
       const [rows] =
         await pool.query(
           `
-          SELECT
+            SELECT
 
-            COUNT(*) AS total_measurements,
+              COUNT(*)
+                AS total_measurements,
 
-            COALESCE(
-              SUM(points_count),
-              0
-            ) AS total_points,
+              COALESCE(
+                SUM(points_count),
+                0
+              )
+                AS total_points,
 
-            MAX(created_at)
-              AS last_measurement
+              MAX(created_at)
+                AS last_measurement
 
-          FROM measurements
+            FROM measurements
           `
         );
 
 
-      res.json(rows[0]);
+      res.json(
+        rows[0]
+      );
 
     }
     catch (err) {
 
+      console.error(
+        "Erreur statistiques historique :",
+        err
+      );
+
+
       res.status(500).json({
+
         error:
-          "Impossible de lire les statistiques"
+          "Impossible de lire les statistiques",
+
+        details:
+          err.message
+
       });
     }
+  }
+);
+
+
+/* =========================================================
+   ETAT GPS - DIAGNOSTIC
+
+   USER + MANAGER + ADMIN
+
+   Cette route donne l'état GPS dans un format pratique
+   pour le diagnostic de la page Localisation.
+   ========================================================= */
+
+app.get(
+  "/api/gps/status",
+  authRequired,
+  (req, res) => {
+
+    const now =
+      Date.now();
+
+
+    const gpsTime =
+      gpsData.gps_updated_at
+        ? new Date(
+            gpsData.gps_updated_at
+          ).getTime()
+        : 0;
+
+
+    const ageMs =
+      gpsTime > 0
+        ? now - gpsTime
+        : null;
+
+
+    res.json({
+
+      valid:
+        gpsData.gps_valid,
+
+
+      latitude:
+        gpsData.gps_lat,
+
+
+      longitude:
+        gpsData.gps_lon,
+
+
+      altitude:
+        gpsData.gps_alt,
+
+
+      satellites:
+        gpsData.gps_satellites,
+
+
+      hdop:
+        gpsData.gps_hdop,
+
+
+      updated_at:
+        gpsData.gps_updated_at,
+
+
+      age_ms:
+        ageMs,
+
+
+      esp32_connected:
+        esp32Status.connected,
+
+
+      esp32_last_seen:
+        esp32Status.lastSeen
+
+    });
+  }
+);
+
+
+/* =========================================================
+   404 API
+
+   Si une route /api/... inexistante est demandée,
+   on retourne du JSON plutôt qu'une page HTML.
+   ========================================================= */
+
+app.use(
+  "/api",
+  (req, res) => {
+
+    res.status(404).json({
+
+      error:
+        "Route API introuvable",
+
+      method:
+        req.method,
+
+      path:
+        req.originalUrl
+
+    });
+  }
+);
+
+
+/* =========================================================
+   GESTION ERREUR EXPRESS
+   ========================================================= */
+
+app.use(
+  (err, req, res, next) => {
+
+    console.error(
+      "Erreur Express :",
+      err
+    );
+
+
+    if (
+      res.headersSent
+    ) {
+
+      return next(
+        err
+      );
+    }
+
+
+    res.status(500).json({
+
+      error:
+        "Erreur interne du serveur",
+
+      details:
+        err.message
+
+    });
   }
 );
 
@@ -2166,6 +3249,10 @@ app.get(
 async function startServer() {
 
   try {
+
+    /* =====================================================
+       VERIFICATION MYSQL
+       ===================================================== */
 
     const [dbRows] =
       await pool.query(`
@@ -2179,8 +3266,16 @@ async function startServer() {
     );
 
 
+    /* =====================================================
+       TABLES
+       ===================================================== */
+
     await ensureMeasurementTables();
 
+
+    /* =====================================================
+       SERVEUR HTTP
+       ===================================================== */
 
     app.listen(
       PORT,
@@ -2190,9 +3285,26 @@ async function startServer() {
           `Serveur SolarMonitor lancé sur le port ${PORT}`
         );
 
+
         console.log(
           "Historique MySQL activé"
         );
+
+
+        console.log(
+          "GPS SolarMonitor activé"
+        );
+
+
+        console.log(
+          "Route ESP32 GPS : POST /api/esp32/gps"
+        );
+
+
+        console.log(
+          "Route lecture GPS : GET /api/gps"
+        );
+
       }
     );
 
@@ -2204,9 +3316,16 @@ async function startServer() {
       err
     );
 
-    process.exit(1);
+
+    process.exit(
+      1
+    );
   }
 }
 
+
+/* =========================================================
+   LANCEMENT
+   ========================================================= */
 
 startServer();
