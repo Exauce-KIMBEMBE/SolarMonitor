@@ -429,6 +429,14 @@ const PAGE_INFO = {
       "Positionnement et suivi solaire"
   },
 
+  gps: {
+    title:
+      "Localisation",
+
+    subtitle:
+      "Position GPS du panneau solaire"
+  },
+
   history: {
     title:
       "Historique",
@@ -471,14 +479,18 @@ function showPage(name) {
   const info =
     PAGE_INFO[name];
 
+
   if (info) {
 
     if ($("pageTitle")) {
+
       $("pageTitle").textContent =
         info.title;
     }
 
+
     if ($("pageSubtitle")) {
+
       $("pageSubtitle").textContent =
         info.subtitle;
     }
@@ -490,21 +502,48 @@ function showPage(name) {
   );
 
 
-  /*
-    Chart.js peut être initialisé
-    alors que son onglet est caché.
-
-    Après changement de page,
-    on force donc le redimensionnement.
-  */
   setTimeout(
     resizeAllCharts,
     80
   );
 
 
+  /* =====================================================
+     HISTORIQUE
+     ===================================================== */
+
   if (name === "history") {
+
     loadMeasurementHistory();
+  }
+
+
+  /* =====================================================
+     GPS
+
+     Leaflet doit être redimensionné après l'ouverture
+     de la page car la carte était auparavant cachée.
+     ===================================================== */
+
+  if (name === "gps") {
+
+    initGpsMap();
+
+
+    setTimeout(
+      () => {
+
+        if (gpsMap) {
+
+          gpsMap.invalidateSize();
+        }
+
+      },
+      150
+    );
+
+
+    refreshGpsDisplay();
   }
 }
 
@@ -539,6 +578,875 @@ function wireNavigation() {
           .toggle(
             "sidebar-open"
           );
+      }
+    );
+}
+
+
+/* =========================================================
+   GPS / LOCALISATION
+   ========================================================= */
+
+let gpsMap = null;
+
+let gpsMarker = null;
+
+let gpsCircle = null;
+
+let lastGpsData = null;
+
+
+/*
+  Position par défaut de la carte.
+
+  IMPORTANT :
+  ce n'est PAS la position du panneau.
+
+  La carte démarre simplement avec une vue mondiale
+  jusqu'à réception d'une vraie position GPS.
+*/
+
+const GPS_DEFAULT_LAT = 0;
+const GPS_DEFAULT_LON = 0;
+const GPS_DEFAULT_ZOOM = 2;
+
+const GPS_VALID_ZOOM = 17;
+
+
+/* =========================================================
+   INITIALISATION CARTE
+   ========================================================= */
+
+function initGpsMap() {
+
+  if (gpsMap)
+    return;
+
+
+  const mapElement =
+    $("gpsMap");
+
+
+  if (!mapElement)
+    return;
+
+
+  /*
+    Vérification de Leaflet.
+  */
+
+  if (
+    typeof L === "undefined"
+  ) {
+
+    console.error(
+      "Leaflet n'est pas chargé."
+    );
+
+    return;
+  }
+
+
+  gpsMap =
+    L.map(
+      mapElement,
+      {
+        zoomControl: true,
+        attributionControl: true
+      }
+    );
+
+
+  gpsMap.setView(
+    [
+      GPS_DEFAULT_LAT,
+      GPS_DEFAULT_LON
+    ],
+    GPS_DEFAULT_ZOOM
+  );
+
+
+  /*
+    OpenStreetMap
+  */
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom: 19,
+
+      attribution:
+        "&copy; OpenStreetMap contributors"
+    }
+  )
+    .addTo(
+      gpsMap
+    );
+
+
+  /*
+    Aucun marqueur n'est créé ici.
+
+    Le marqueur apparaîtra uniquement lorsqu'une
+    vraie latitude/longitude sera reçue du GPS.
+  */
+
+  setTimeout(
+    () => {
+
+      if (gpsMap) {
+
+        gpsMap.invalidateSize();
+      }
+
+    },
+    100
+  );
+}
+
+
+/* =========================================================
+   VALIDATION COORDONNEES
+   ========================================================= */
+
+function isValidGpsCoordinate(
+  latitude,
+  longitude
+) {
+
+  const lat =
+    Number(latitude);
+
+  const lon =
+    Number(longitude);
+
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon)
+  ) {
+
+    return false;
+  }
+
+
+  if (
+    lat < -90 ||
+    lat > 90
+  ) {
+
+    return false;
+  }
+
+
+  if (
+    lon < -180 ||
+    lon > 180
+  ) {
+
+    return false;
+  }
+
+
+  /*
+    0 / 0 est généralement envoyé par certains
+    modules avant l'obtention d'un fix.
+
+    On ne place donc pas le panneau à cet endroit.
+  */
+
+  if (
+    lat === 0 &&
+    lon === 0
+  ) {
+
+    return false;
+  }
+
+
+  return true;
+}
+
+
+/* =========================================================
+   EXTRACTION DES DONNEES GPS
+
+   Cette fonction accepte plusieurs noms afin de ne pas
+   rendre le navigateur dépendant d'un seul format ESP32.
+
+   Le format que nous utiliserons ensuite côté ESP32 sera :
+
+   gps_valid
+   gps_lat
+   gps_lon
+   gps_alt
+   gps_satellites
+   gps_hdop
+   ========================================================= */
+
+function extractGpsData(s) {
+
+  if (
+    !s ||
+    typeof s !== "object"
+  ) {
+
+    return null;
+  }
+
+
+  const latitude =
+    s.gps_lat ??
+    s.latitude ??
+    s.lat ??
+    s.gps?.lat ??
+    s.gps?.latitude;
+
+
+  const longitude =
+    s.gps_lon ??
+    s.longitude ??
+    s.lon ??
+    s.lng ??
+    s.gps?.lon ??
+    s.gps?.lng ??
+    s.gps?.longitude;
+
+
+  const altitude =
+    s.gps_alt ??
+    s.gps_altitude ??
+    s.altitude ??
+    s.gps?.alt ??
+    s.gps?.altitude;
+
+
+  const satellites =
+    s.gps_satellites ??
+    s.satellites ??
+    s.sats ??
+    s.gps?.satellites;
+
+
+  const hdop =
+    s.gps_hdop ??
+    s.hdop ??
+    s.gps?.hdop;
+
+
+  const explicitValid =
+    s.gps_valid ??
+    s.gps?.valid;
+
+
+  const coordinateValid =
+    isValidGpsCoordinate(
+      latitude,
+      longitude
+    );
+
+
+  const valid =
+    explicitValid === undefined
+      ? coordinateValid
+      : (
+          (
+            explicitValid === true ||
+            explicitValid === 1 ||
+            explicitValid === "1" ||
+            explicitValid === "true"
+          ) &&
+          coordinateValid
+        );
+
+
+  /*
+    Si aucune donnée GPS n'est présente dans le JSON,
+    on ne touche pas à la position actuellement affichée.
+  */
+
+  const hasGpsField =
+    latitude !== undefined ||
+    longitude !== undefined ||
+    altitude !== undefined ||
+    satellites !== undefined ||
+    hdop !== undefined ||
+    explicitValid !== undefined;
+
+
+  if (!hasGpsField)
+    return null;
+
+
+  return {
+
+    valid,
+
+    latitude:
+      latitude == null
+        ? null
+        : Number(latitude),
+
+    longitude:
+      longitude == null
+        ? null
+        : Number(longitude),
+
+    altitude:
+      altitude == null
+        ? null
+        : Number(altitude),
+
+    satellites:
+      satellites == null
+        ? null
+        : Number(satellites),
+
+    hdop:
+      hdop == null
+        ? null
+        : Number(hdop),
+
+    receivedAt:
+      new Date()
+
+  };
+}
+
+
+/* =========================================================
+   FORMAT DATE GPS
+   ========================================================= */
+
+function formatGpsTime(date) {
+
+  if (!(date instanceof Date))
+    return "—";
+
+
+  return date.toLocaleString(
+    "fr-FR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }
+  );
+}
+
+
+/* =========================================================
+   ETAT GPS
+   ========================================================= */
+
+function setGpsState(
+  valid,
+  message
+) {
+
+  const badge =
+    $("gpsStateBadge");
+
+
+  const text =
+    $("gpsStateText");
+
+
+  if (text) {
+
+    text.textContent =
+      message;
+  }
+
+
+  if (badge) {
+
+    badge.classList.remove(
+      "waiting",
+      "valid",
+      "error"
+    );
+
+
+    badge.classList.add(
+      valid
+        ? "valid"
+        : "waiting"
+    );
+  }
+
+
+  if ($("gpsFixStatus")) {
+
+    $("gpsFixStatus").textContent =
+      valid
+        ? "Position GPS valide"
+        : "Recherche de position";
+  }
+
+
+  if ($("gpsDataState")) {
+
+    $("gpsDataState").textContent =
+      valid
+        ? "Position reçue"
+        : "En attente";
+  }
+
+
+  if ($("gpsFixType")) {
+
+    $("gpsFixType").textContent =
+      valid
+        ? "Fix valide"
+        : "Aucun fix";
+  }
+}
+
+
+/* =========================================================
+   AFFICHAGE GPS
+   ========================================================= */
+
+function applyGpsData(s) {
+
+  const gps =
+    extractGpsData(s);
+
+
+  /*
+    Le message reçu ne contient aucune donnée GPS.
+  */
+
+  if (!gps)
+    return;
+
+
+  lastGpsData =
+    gps;
+
+
+  /* =====================================================
+     SATELLITES
+     ===================================================== */
+
+  if ($("gpsSatellites")) {
+
+    $("gpsSatellites").textContent =
+      Number.isFinite(gps.satellites)
+        ? Math.round(
+            gps.satellites
+          )
+        : "—";
+  }
+
+
+  if ($("gpsSatellitesDetail")) {
+
+    $("gpsSatellitesDetail").textContent =
+      Number.isFinite(gps.satellites)
+        ? `${Math.round(gps.satellites)}`
+        : "—";
+  }
+
+
+  /* =====================================================
+     HDOP
+     ===================================================== */
+
+  if ($("gpsHdop")) {
+
+    $("gpsHdop").textContent =
+      Number.isFinite(gps.hdop)
+        ? fmt(
+            gps.hdop,
+            2
+          )
+        : "—";
+  }
+
+
+  if ($("gpsHdopDetail")) {
+
+    $("gpsHdopDetail").textContent =
+      Number.isFinite(gps.hdop)
+        ? fmt(
+            gps.hdop,
+            2
+          )
+        : "—";
+  }
+
+
+  /* =====================================================
+     PAS ENCORE DE FIX
+     ===================================================== */
+
+  if (!gps.valid) {
+
+    setGpsState(
+      false,
+      "Recherche GPS"
+    );
+
+
+    if ($("gpsMapDescription")) {
+
+      $("gpsMapDescription").textContent =
+        "Recherche d'une position GPS valide...";
+    }
+
+
+    return;
+  }
+
+
+  /* =====================================================
+     POSITION VALIDE
+     ===================================================== */
+
+  const lat =
+    gps.latitude;
+
+  const lon =
+    gps.longitude;
+
+
+  const latText =
+    lat.toFixed(6);
+
+
+  const lonText =
+    lon.toFixed(6);
+
+
+  /* =====================================================
+     LATITUDE
+     ===================================================== */
+
+  if ($("gpsLatitude")) {
+
+    $("gpsLatitude").textContent =
+      latText;
+  }
+
+
+  /* =====================================================
+     LONGITUDE
+     ===================================================== */
+
+  if ($("gpsLongitude")) {
+
+    $("gpsLongitude").textContent =
+      lonText;
+  }
+
+
+  /* =====================================================
+     ALTITUDE
+     ===================================================== */
+
+  if ($("gpsAltitude")) {
+
+    $("gpsAltitude").textContent =
+      Number.isFinite(gps.altitude)
+        ? fmt(
+            gps.altitude,
+            1
+          )
+        : "—";
+  }
+
+
+  if ($("gpsAltitudeDetail")) {
+
+    $("gpsAltitudeDetail").textContent =
+      Number.isFinite(gps.altitude)
+        ? `${fmt(
+            gps.altitude,
+            1
+          )} m`
+        : "—";
+  }
+
+
+  /* =====================================================
+     COORDONNEES
+     ===================================================== */
+
+  if ($("gpsCoordinates")) {
+
+    $("gpsCoordinates").textContent =
+      `${latText}, ${lonText}`;
+  }
+
+
+  /* =====================================================
+     HEURE
+     ===================================================== */
+
+  const timeText =
+    formatGpsTime(
+      gps.receivedAt
+    );
+
+
+  if ($("gpsLastUpdate")) {
+
+    $("gpsLastUpdate").textContent =
+      timeText;
+  }
+
+
+  if ($("gpsLastReception")) {
+
+    $("gpsLastReception").textContent =
+      timeText;
+  }
+
+
+  /* =====================================================
+     ETAT
+     ===================================================== */
+
+  setGpsState(
+    true,
+    "Position valide"
+  );
+
+
+  if ($("gpsMapDescription")) {
+
+    $("gpsMapDescription").textContent =
+      `Panneau : ${latText}, ${lonText}`;
+  }
+
+
+  /* =====================================================
+     CARTE
+     ===================================================== */
+
+  initGpsMap();
+
+
+  if (!gpsMap)
+    return;
+
+
+  const position = [
+    lat,
+    lon
+  ];
+
+
+  /*
+    Premier fix GPS :
+    création du marqueur.
+  */
+
+  if (!gpsMarker) {
+
+    gpsMarker =
+      L.marker(
+        position
+      )
+        .addTo(
+          gpsMap
+        );
+
+
+    gpsMarker.bindPopup(
+      `
+        <strong>Panneau solaire</strong>
+        <br>
+        Latitude : ${latText}
+        <br>
+        Longitude : ${lonText}
+      `
+    );
+  }
+
+  else {
+
+    gpsMarker.setLatLng(
+      position
+    );
+
+
+    gpsMarker.setPopupContent(
+      `
+        <strong>Panneau solaire</strong>
+        <br>
+        Latitude : ${latText}
+        <br>
+        Longitude : ${lonText}
+      `
+    );
+  }
+
+
+  /* =====================================================
+     CERCLE DE PRECISION APPROXIMATIF
+
+     HDOP n'est pas directement une précision en mètres.
+     Le cercle sert uniquement de repère visuel et n'est
+     affiché que lorsqu'une valeur HDOP exploitable existe.
+     ===================================================== */
+
+  if (
+    Number.isFinite(gps.hdop) &&
+    gps.hdop > 0
+  ) {
+
+    const approximateRadius =
+      Math.max(
+        5,
+        gps.hdop * 5
+      );
+
+
+    if (!gpsCircle) {
+
+      gpsCircle =
+        L.circle(
+          position,
+          {
+            radius:
+              approximateRadius
+          }
+        )
+          .addTo(
+            gpsMap
+          );
+    }
+
+    else {
+
+      gpsCircle.setLatLng(
+        position
+      );
+
+
+      gpsCircle.setRadius(
+        approximateRadius
+      );
+    }
+  }
+
+
+  gpsMap.setView(
+    position,
+    GPS_VALID_ZOOM
+  );
+
+
+  /*
+    Le message "position indisponible"
+    disparaît seulement après un vrai fix.
+  */
+
+  if ($("gpsMapWaiting")) {
+
+    $("gpsMapWaiting").style.display =
+      "none";
+  }
+
+
+  setTimeout(
+    () => {
+
+      if (gpsMap) {
+
+        gpsMap.invalidateSize();
+      }
+
+    },
+    100
+  );
+}
+
+
+/* =========================================================
+   RAFRAICHISSEMENT AFFICHAGE GPS
+   ========================================================= */
+
+function refreshGpsDisplay() {
+
+  initGpsMap();
+
+
+  if (lastGpsData) {
+
+    /*
+      On reconstruit volontairement un objet dans le format
+      attendu afin de réafficher la dernière position.
+    */
+
+    applyGpsData({
+
+      gps_valid:
+        lastGpsData.valid,
+
+      gps_lat:
+        lastGpsData.latitude,
+
+      gps_lon:
+        lastGpsData.longitude,
+
+      gps_alt:
+        lastGpsData.altitude,
+
+      gps_satellites:
+        lastGpsData.satellites,
+
+      gps_hdop:
+        lastGpsData.hdop
+
+    });
+  }
+
+
+  setTimeout(
+    () => {
+
+      if (gpsMap) {
+
+        gpsMap.invalidateSize();
+      }
+
+    },
+    100
+  );
+}
+
+
+/* =========================================================
+   BOUTON ACTUALISER GPS
+   ========================================================= */
+
+function wireGpsControls() {
+
+  $("btnRefreshGps")
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        /*
+          Pour l'instant, le bouton demande simplement
+          immédiatement la dernière donnée disponible
+          sur Render.
+
+          Il ne commande PAS le panneau.
+        */
+
+        await pollESP32Data();
+
+
+        refreshGpsDisplay();
       }
     );
 }
@@ -845,6 +1753,7 @@ async function pollESP32Data() {
   const token =
     getToken();
 
+
   if (!token)
     return;
 
@@ -891,30 +1800,56 @@ async function pollESP32Data() {
       signature;
 
 
+    /* =====================================================
+       GPS
+
+       On traite les informations GPS quel que soit
+       le type de message reçu.
+
+       Ainsi un snapshot, un message temps réel ou un autre
+       état pourra mettre à jour la localisation.
+       ===================================================== */
+
+    applyGpsData(s);
+
+
+    /* =====================================================
+       SNAPSHOT
+       ===================================================== */
+
     if (
       s.info ===
       "snapshot"
     ) {
 
       if ("servo1_deg" in s) {
+
         setServoAngleUI(
           1,
           s.servo1_deg
         );
       }
 
+
       if ("servo2_deg" in s) {
+
         setServoAngleUI(
           2,
           s.servo2_deg
         );
       }
 
+
       applyOrientationStatus(s);
+
 
       return;
     }
 
+
+    /* =====================================================
+       RESUME I-V
+       ===================================================== */
 
     if (
       s.info ===
@@ -924,12 +1859,14 @@ async function pollESP32Data() {
       await applyIvSummary(s);
 
     }
+
     else {
 
       applySample(s);
     }
 
   }
+
   catch (err) {
 
     console.error(
@@ -7610,6 +8547,8 @@ window.addEventListener(
 
     wireButtons();
 
+    wireGpsControls();
+
     enableRipple();
 
 
@@ -7627,6 +8566,7 @@ window.addEventListener(
       Charge également l'historique
       permanent dès le démarrage.
     */
+
     await loadMeasurementHistory();
 
 
@@ -7640,5 +8580,6 @@ window.addEventListener(
       pollESP32Data,
       500
     );
+
   }
 );
