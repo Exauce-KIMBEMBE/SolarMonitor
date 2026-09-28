@@ -4043,8 +4043,8 @@ input[type="radio"]{
 }
 
 /* =========================================================
-   SOLARMONITOR — PAGE LOCALISATION GPS
-   À ajouter à la fin de style.css
+   SOLARMONITOR — LOCALISATION GPS
+   Version compacte + grande carte
    ========================================================= */
 
 
@@ -4055,11 +4055,6 @@ input[type="radio"]{
 #page-gps{
   width:100%;
 }
-
-
-/* =========================================================
-   CARTES GPS
-   ========================================================= */
 
 #page-gps .card{
   min-width:0;
@@ -4075,97 +4070,112 @@ input[type="radio"]{
   align-items:center;
   justify-content:center;
 
-  min-width:90px;
   min-height:30px;
-
   padding:5px 12px;
 
   border-radius:999px;
 
-  border:
-    1px solid rgba(245,158,11,.28);
+  border:1px solid rgba(245,158,11,.30);
+  background:rgba(245,158,11,.10);
 
-  background:
-    rgba(245,158,11,.12);
-
-  color:
-    var(--orange);
+  color:var(--orange);
 
   font-size:12px;
   font-weight:800;
 
-  letter-spacing:.02em;
-
   white-space:nowrap;
-
-  transition:
-    background .2s ease,
-    border-color .2s ease,
-    color .2s ease,
-    box-shadow .2s ease;
 }
-
-
-/* GPS valide */
 
 #gpsStateBadge.ok,
 #gpsStateBadge.connected,
 #gpsStateBadge.valid{
-
-  background:
-    rgba(34,197,94,.12);
-
-  border-color:
-    rgba(34,197,94,.30);
-
-  color:
-    var(--green);
-
-  box-shadow:
-    0 0 0 1px rgba(34,197,94,.04);
+  border-color:rgba(34,197,94,.35);
+  background:rgba(34,197,94,.10);
+  color:var(--green);
 }
-
-
-/* GPS en attente */
-
-#gpsStateBadge.waiting,
-#gpsStateBadge.pending{
-
-  background:
-    rgba(245,158,11,.12);
-
-  border-color:
-    rgba(245,158,11,.28);
-
-  color:
-    var(--orange);
-}
-
-
-/* GPS indisponible */
 
 #gpsStateBadge.error,
 #gpsStateBadge.offline,
 #gpsStateBadge.invalid{
-
-  background:
-    rgba(239,68,68,.12);
-
-  border-color:
-    rgba(239,68,68,.28);
-
-  color:
-    var(--red);
+  border-color:rgba(239,68,68,.35);
+  background:rgba(239,68,68,.10);
+  color:var(--red);
 }
-
 
 #gpsStateText{
   margin:0;
+  color:var(--muted);
+}
 
-  color:
-    var(--muted);
 
-  line-height:1.5;
+/* =========================================================
+   CARTE "ETAT DU GPS"
+
+   Ton HTML utilise déjà les éléments existants.
+   On compacte tous les blocs de statistiques.
+   ========================================================= */
+
+#page-gps .statsGrid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+
+  gap:10px;
+
+  width:100%;
+}
+
+
+/* Cartes Latitude / Longitude / Altitude / etc. */
+
+#page-gps .statCard{
+  min-width:0;
+
+  min-height:78px;
+
+  padding:12px 14px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+
+  border:1px solid var(--border);
+  border-radius:12px;
+
+  background:
+    rgba(8,29,50,.55);
+}
+
+
+/* On évite les énormes cases visibles sur ta capture */
+
+#page-gps .statCard .label,
+#page-gps .statCard small{
+  margin-bottom:5px;
+
+  color:var(--muted);
+
+  font-size:11px;
+  font-weight:700;
+}
+
+
+#page-gps .statCard .value{
+  width:100%;
+
+  color:var(--ink);
+
+  font-size:17px;
+  font-weight:800;
+
+  line-height:1.2;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+
+  font-variant-numeric:tabular-nums;
 }
 
 
@@ -4179,81 +4189,55 @@ input[type="radio"]{
 #gpsSatellites,
 #gpsHdop,
 #gpsLastUpdate{
-
-  font-variant-numeric:
-    tabular-nums;
+  font-variant-numeric:tabular-nums;
 }
 
 
-/* Latitude / Longitude mises en évidence */
-
 #gpsLatitude,
 #gpsLongitude{
-
-  color:
-    var(--blue-soft);
-
+  color:var(--blue-soft);
   font-weight:800;
 }
 
 
-/* Satellites */
-
 #gpsSatellites{
-
-  color:
-    var(--cyan);
-
+  color:var(--cyan);
   font-weight:800;
 }
 
 
 /* =========================================================
-   CONTENEUR CARTE
+   CARTE GPS
+
+   Beaucoup plus grande que dans la version précédente.
    ========================================================= */
 
 #gpsMap{
-
   position:relative;
 
   width:100%;
 
-  height:480px;
-
-  min-height:380px;
+  height:620px;
+  min-height:620px;
 
   overflow:hidden;
 
-  border-radius:
-    calc(var(--radius) - 4px);
+  border:1px solid var(--border);
+  border-radius:14px;
 
-  border:
-    1px solid var(--border);
-
-  background:
-    var(--bg-soft);
-
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.015);
+  background:var(--bg-soft);
 
   z-index:1;
 }
 
 
-/* =========================================================
-   LEAFLET
-   ========================================================= */
-
 #gpsMap.leaflet-container{
-
   width:100%;
 
-  height:480px;
+  height:620px;
+  min-height:620px;
 
-  min-height:380px;
-
-  background:
-    #0b1728;
+  background:#0b1728;
 
   font-family:
     system-ui,
@@ -4266,12 +4250,13 @@ input[type="radio"]{
 }
 
 
-/* Empêche Leaflet de passer devant le menu latéral */
+/* =========================================================
+   LEAFLET
+   ========================================================= */
 
 #gpsMap .leaflet-pane{
   z-index:1;
 }
-
 
 #gpsMap .leaflet-top,
 #gpsMap .leaflet-bottom{
@@ -4279,184 +4264,129 @@ input[type="radio"]{
 }
 
 
-/* =========================================================
-   BOUTONS LEAFLET + / -
-   ========================================================= */
+/* Zoom */
 
 #gpsMap .leaflet-control-zoom{
-
   overflow:hidden;
 
-  border:
-    1px solid rgba(126,161,220,.22);
-
+  border:1px solid rgba(126,161,220,.22);
   border-radius:10px;
 
-  box-shadow:
-    0 8px 24px rgba(0,0,0,.25);
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
 }
 
 
 #gpsMap .leaflet-control-zoom a{
+  width:36px;
+  height:36px;
 
-  width:34px;
+  line-height:36px;
 
-  height:34px;
+  background:var(--card);
+  color:var(--ink);
 
-  line-height:34px;
-
-  background:
-    #0f1d33;
-
-  color:
-    var(--ink);
-
-  border-color:
-    rgba(126,161,220,.15);
-
-  transition:
-    background .2s ease,
-    color .2s ease;
+  border-color:var(--border);
 }
 
 
 #gpsMap .leaflet-control-zoom a:hover{
-
-  background:
-    #17386f;
-
-  color:
-    #ffffff;
+  background:var(--sidebar-active);
+  color:#fff;
 }
 
 
-/* =========================================================
-   ATTRIBUTION OPENSTREETMAP
-   ========================================================= */
+/* OpenStreetMap */
 
 #gpsMap .leaflet-control-attribution{
-
   padding:3px 7px;
 
-  background:
-    rgba(7,17,31,.82);
+  background:rgba(7,17,31,.82);
 
-  color:
-    var(--muted);
+  color:var(--muted);
 
   font-size:10px;
-
-  border-radius:
-    8px 0 0 0;
-
-  backdrop-filter:
-    blur(8px);
 }
 
 
 #gpsMap .leaflet-control-attribution a{
-
-  color:
-    var(--blue-soft);
+  color:var(--blue-soft);
 }
 
 
-/* =========================================================
-   POPUP GPS
-   ========================================================= */
+/* Popup */
 
 #gpsMap .leaflet-popup-content-wrapper{
+  background:var(--card);
+  color:var(--ink);
 
-  background:
-    var(--card);
-
-  color:
-    var(--ink);
-
-  border:
-    1px solid var(--border);
-
+  border:1px solid var(--border);
   border-radius:12px;
 
-  box-shadow:
-    var(--shadow);
+  box-shadow:var(--shadow);
 }
 
 
 #gpsMap .leaflet-popup-tip{
-
-  background:
-    var(--card);
+  background:var(--card);
 }
 
 
 #gpsMap .leaflet-popup-content{
-
   margin:12px 14px;
 
   font-size:13px;
-
   line-height:1.5;
 }
 
 
 /* =========================================================
-   MESSAGE "EN ATTENTE DU GPS"
+   MESSAGE ATTENTE GPS
    ========================================================= */
 
 #gpsMapWaiting{
-
   display:flex;
 
   align-items:center;
-
   justify-content:center;
 
   gap:10px;
 
   width:100%;
 
-  min-height:46px;
+  min-height:42px;
 
-  margin-top:12px;
+  margin-top:10px;
 
-  padding:10px 14px;
+  padding:8px 14px;
 
   border:
-    1px dashed rgba(245,158,11,.30);
+    1px dashed rgba(245,158,11,.35);
 
-  border-radius:12px;
+  border-radius:10px;
 
   background:
-    rgba(245,158,11,.07);
+    rgba(245,158,11,.06);
 
-  color:
-    var(--orange);
+  color:var(--orange);
 
-  font-size:13px;
-
+  font-size:12px;
   font-weight:700;
 
   text-align:center;
 }
 
 
-/* Petit indicateur animé */
-
 #gpsMapWaiting::before{
-
   content:"";
+
+  width:8px;
+  height:8px;
 
   flex:0 0 auto;
 
-  width:9px;
-
-  height:9px;
-
   border-radius:50%;
 
-  background:
-    var(--orange);
+  background:var(--orange);
 
   box-shadow:
     0 0 0 0 rgba(245,158,11,.45);
@@ -4486,218 +4416,167 @@ input[type="radio"]{
 
 
 /* =========================================================
-   DESCRIPTION CARTE
+   EN-TETE CARTE + BOUTON ACTUALISER
    ========================================================= */
 
 #gpsMapDescription{
+  margin-bottom:0;
 
-  color:
-    var(--muted);
+  color:var(--muted);
 
-  line-height:1.5;
+  line-height:1.4;
 }
 
 
-/* =========================================================
-   BOUTON ACTUALISER GPS
-   ========================================================= */
-
 #btnRefreshGps{
-
   display:inline-flex;
 
   align-items:center;
-
   justify-content:center;
 
-  gap:8px;
+  gap:7px;
 
-  min-height:40px;
+  min-height:38px;
 
-  padding:
-    9px 16px;
+  padding:8px 14px;
 
-  border-radius:11px;
+  border:1px solid rgba(79,140,255,.32);
+  border-radius:10px;
 
-  border:
-    1px solid rgba(79,140,255,.28);
+  background:rgba(79,140,255,.10);
 
-  background:
-    rgba(79,140,255,.12);
+  color:var(--blue-soft);
 
-  color:
-    var(--blue-soft);
-
+  font-size:13px;
   font-weight:800;
 
   cursor:pointer;
 
   transition:
-    transform .16s ease,
     background .16s ease,
     border-color .16s ease,
-    box-shadow .16s ease;
+    transform .16s ease;
 }
 
 
 #btnRefreshGps:hover{
+  background:rgba(79,140,255,.20);
+  border-color:rgba(79,140,255,.50);
 
-  background:
-    rgba(79,140,255,.20);
-
-  border-color:
-    rgba(79,140,255,.45);
-
-  box-shadow:
-    0 8px 22px rgba(0,0,0,.18);
-
-  transform:
-    translateY(-1px);
+  transform:translateY(-1px);
 }
 
 
 #btnRefreshGps:active{
-
-  transform:
-    translateY(0);
-}
-
-
-#btnRefreshGps:disabled{
-
-  opacity:.45;
-
-  cursor:not-allowed;
-
   transform:none;
-
-  box-shadow:none;
 }
 
 
 /* =========================================================
-   DETAILS GPS
+   INFORMATIONS DE LOCALISATION
+
+   On affiche également les informations détaillées
+   de manière compacte.
    ========================================================= */
 
-#gpsFixStatus,
 #gpsCoordinates,
 #gpsAltitudeDetail,
 #gpsSatellitesDetail,
 #gpsHdopDetail,
 #gpsLastReception,
+#gpsFixStatus,
 #gpsDataState,
 #gpsFixType{
-
-  font-variant-numeric:
-    tabular-nums;
+  font-variant-numeric:tabular-nums;
 }
 
-
-/* Coordonnées détaillées */
 
 #gpsCoordinates{
-
-  color:
-    var(--blue-soft);
-
-  font-weight:700;
-
-  word-break:
-    break-word;
-}
-
-
-/* =========================================================
-   VALEURS IMPORTANTES
-   ========================================================= */
-
-#gpsFixStatus,
-#gpsDataState{
+  color:var(--blue-soft);
 
   font-weight:800;
+
+  word-break:break-word;
 }
 
 
 #gpsSatellitesDetail{
+  color:var(--cyan);
+  font-weight:800;
+}
 
-  color:
-    var(--cyan);
 
+#gpsFixStatus,
+#gpsDataState{
   font-weight:800;
 }
 
 
 /* =========================================================
-   MEILLEURE INTEGRATION VISUELLE DE LA CARTE
+   ON REDUIT LES ESPACES VERTICAUX UNIQUEMENT SUR PAGE GPS
    ========================================================= */
 
-#page-gps .leaflet-marker-icon{
-
-  filter:
-    drop-shadow(
-      0 4px 7px rgba(0,0,0,.45)
-    );
+#page-gps .sectionHead{
+  margin-bottom:12px;
 }
 
 
-/* Cercle approximatif HDOP */
+#page-gps .card{
+  margin-bottom:14px;
+}
 
-#page-gps .leaflet-interactive{
 
-  transition:
-    opacity .2s ease;
+#page-gps .cardHeader{
+  margin-bottom:10px;
 }
 
 
 /* =========================================================
-   MODE CHARGEMENT GPS
+   TABLETTE LARGE
+
+   6 informations -> 3 colonnes × 2 lignes
    ========================================================= */
 
-#page-gps.gps-loading #btnRefreshGps{
+@media (max-width:1200px){
 
-  pointer-events:none;
+  #page-gps .statsGrid{
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
 
-  opacity:.65;
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+    height:560px;
+    min-height:560px;
+  }
+
 }
 
 
 /* =========================================================
    TABLETTE
+
+   2 colonnes
    ========================================================= */
 
-@media (max-width:1100px){
+@media (max-width:800px){
 
-  #gpsMap,
-  #gpsMap.leaflet-container{
-
-    height:430px;
-
-    min-height:360px;
-  }
-
-}
-
-
-/* =========================================================
-   TABLETTE / PETIT ECRAN
-   ========================================================= */
-
-@media (max-width:820px){
-
-  #gpsMap,
-  #gpsMap.leaflet-container{
-
-    height:400px;
-
-    min-height:340px;
-
-    border-radius:14px;
+  #page-gps .statsGrid{
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 
 
-  #btnRefreshGps{
+  #page-gps .statCard{
+    min-height:72px;
+  }
 
-    min-height:42px;
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+    height:500px;
+    min-height:500px;
   }
 
 }
@@ -4707,31 +4586,37 @@ input[type="radio"]{
    MOBILE
    ========================================================= */
 
-@media (max-width:600px){
+@media (max-width:560px){
 
-  #gpsMap,
-  #gpsMap.leaflet-container{
+  #page-gps .statsGrid{
+    grid-template-columns:1fr 1fr;
 
-    height:360px;
-
-    min-height:320px;
-
-    border-radius:12px;
+    gap:8px;
   }
 
 
-  #gpsMapWaiting{
+  #page-gps .statCard{
+    min-height:68px;
 
-    min-height:44px;
+    padding:10px;
+  }
 
-    padding:9px 11px;
 
-    font-size:12px;
+  #page-gps .statCard .value{
+    font-size:15px;
+  }
+
+
+  #gpsMap,
+  #gpsMap.leaflet-container{
+    height:440px;
+    min-height:440px;
+
+    border-radius:11px;
   }
 
 
   #btnRefreshGps{
-
     width:100%;
 
     min-height:44px;
@@ -4740,24 +4625,16 @@ input[type="radio"]{
 
   #gpsLatitude,
   #gpsLongitude{
+    font-size:14px;
 
-    font-size:
-      clamp(
-        14px,
-        4vw,
-        18px
-      );
-
-    word-break:
-      break-word;
+    word-break:break-word;
   }
 
 
-  #gpsMap .leaflet-control-attribution{
+  #gpsMapWaiting{
+    font-size:11px;
 
-    max-width:80%;
-
-    font-size:9px;
+    padding:8px 10px;
   }
 
 }
@@ -4769,43 +4646,32 @@ input[type="radio"]{
 
 @media (max-width:380px){
 
-  #gpsMap,
-  #gpsMap.leaflet-container{
-
-    height:320px;
-
-    min-height:290px;
+  #page-gps .statsGrid{
+    grid-template-columns:1fr;
   }
 
 
-  #gpsStateBadge{
-
-    min-width:80px;
-
-    padding:
-      4px 9px;
-
-    font-size:11px;
+  #gpsMap,
+  #gpsMap.leaflet-container{
+    height:400px;
+    min-height:400px;
   }
 
 }
 
 
 /* =========================================================
-   ACCESSIBILITE / REDUCTION DES ANIMATIONS
+   ACCESSIBILITE
    ========================================================= */
 
 @media (prefers-reduced-motion:reduce){
 
   #gpsMapWaiting::before{
-
     animation:none;
   }
 
 
-  #btnRefreshGps,
-  #gpsStateBadge{
-
+  #btnRefreshGps{
     transition:none;
   }
 
